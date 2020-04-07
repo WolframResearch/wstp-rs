@@ -1,3 +1,8 @@
+//! This script links the Mathematica WSTPi4 library.
+//!
+//! It does this by finding the local Mathematica installation by using the users
+//! `wolframscript` to evaluate `$InstallationDirectory`. This script will fail if
+//! `wolframscript` is not on `$PATH`.
 extern crate bindgen;
 
 use cfg_if::cfg_if;
