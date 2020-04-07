@@ -25,6 +25,10 @@ fn main() {
 
     generate_bindings(&installation);
     link_wstp_statically(&installation);
+
+    // Note: This blog post explained this, and that this might need to change on Linux.
+    //         https://flames-of-code.netlify.com/blog/rust-and-cmake-cplusplus/
+    println!("cargo:rustc-link-lib=dylib=c++");
 }
 
 cfg_if![if #[cfg(all(target_os = "macos", target_arch = "x86_64"))] {
