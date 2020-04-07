@@ -12,3 +12,4 @@ links = "WSTPi4"
 
 [build-dependencies]
 bindgen = "^0.53"
+cfg-if = "0.1.10"
