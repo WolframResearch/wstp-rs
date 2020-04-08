@@ -33,13 +33,14 @@ impl WSTPLink {
         unsafe { WSReady(link) > 0 }
     }
 
-    /// G
+    /// Read an expression off of this link.
     pub fn get_expr(&self) -> Result<Expr, String> {
         let WSTPLink { link } = *self;
 
         unsafe { get_expr(link) }
     }
 
+    /// Write an expression to this link.
     pub fn put_expr(&self, expr: &Expr) -> Result<(), String> {
         let WSTPLink { link } = *self;
 
