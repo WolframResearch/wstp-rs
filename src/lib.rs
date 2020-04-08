@@ -27,6 +27,9 @@ impl WSTPLink {
         WSTPLink { link }
     }
 
+    /// Check if there is data ready to be read from this link.
+    ///
+    /// This corresponds to the `WSReady()` function from the WSTP C API.
     pub fn is_ready(&self) -> bool {
         let WSTPLink { link } = *self;
 
