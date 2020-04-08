@@ -4,9 +4,9 @@ use std::ffi::{CStr, CString};
 use wl_expr::{Expr, ExprKind, Normal, Number, Symbol};
 use wl_wstp_sys::{
     WSClearError, WSEndPacket, WSErrorMessage, WSGetArgCount, WSGetInteger64,
-    WSGetReal64, WSGetSymbol, WSGetType, WSGetUTF8String, WSPutArgCount, WSPutInteger64,
-    WSPutReal64, WSPutType, WSPutUTF8String, WSPutUTF8Symbol, WSReleaseErrorMessage,
-    WSReleaseString, WSReleaseSymbol, WSLINK,
+    WSGetReal64, WSGetSymbol, WSGetType, WSGetUTF8String, WSNewPacket, WSPutArgCount,
+    WSPutInteger64, WSPutReal64, WSPutType, WSPutUTF8String, WSPutUTF8Symbol,
+    WSReleaseErrorMessage, WSReleaseString, WSReleaseSymbol, WSLINK,
 };
 
 macro_rules! link_try {
@@ -36,13 +36,15 @@ impl WSTPLink {
     pub fn put_expr(&self, expr: &Expr) -> Result<(), String> {
         let WSTPLink { link } = *self;
 
-        let res = unsafe { put_expr(link, expr) };
-
         unsafe {
-            link_try!(link, WSEndPacket(link));
-        }
+            WSNewPacket(link);
 
-        res
+            let res = put_expr(link, expr);
+
+            link_try!(link, WSEndPacket(link));
+
+            res
+        }
     }
 }
 
