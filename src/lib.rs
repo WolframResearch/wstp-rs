@@ -1,11 +1,22 @@
 use std::convert::TryFrom;
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 
-use wl_expr::{Expr, Number, Symbol};
+use wl_expr::{Expr, ExprKind, Normal, Number, Symbol};
 use wl_wstp_sys::{
-    WSErrorMessage, WSGetArgCount, WSGetInteger64, WSGetReal64, WSGetSymbol, WSGetType,
-    WSGetUTF8String, WSReleaseErrorMessage, WSReleaseString, WSReleaseSymbol, WSLINK,
+    WSClearError, WSEndPacket, WSErrorMessage, WSGetArgCount, WSGetInteger64,
+    WSGetReal64, WSGetSymbol, WSGetType, WSGetUTF8String, WSPutArgCount, WSPutInteger64,
+    WSPutReal64, WSPutType, WSPutUTF8String, WSPutUTF8Symbol, WSReleaseErrorMessage,
+    WSReleaseString, WSReleaseSymbol, WSLINK,
 };
+
+macro_rules! link_try {
+    ($link:expr, $op:expr) => {{
+        let link: WSLINK = $link;
+        if $op == 0 {
+            return Err(error_message_or_unknown(link));
+        }
+    }};
+}
 
 pub struct WSTPLink {
     link: WSLINK,
@@ -21,6 +32,18 @@ impl WSTPLink {
 
         unsafe { get_expr(link) }
     }
+
+    pub fn put_expr(&self, expr: &Expr) -> Result<(), String> {
+        let WSTPLink { link } = *self;
+
+        let res = unsafe { put_expr(link, expr) };
+
+        unsafe {
+            link_try!(link, WSEndPacket(link));
+        }
+
+        res
+    }
 }
 
 unsafe fn error_message(link: WSLINK) -> Option<String> {
@@ -34,6 +57,8 @@ unsafe fn error_message(link: WSLINK) -> Option<String> {
     let string: String = cstr.to_str().unwrap().to_owned();
 
     WSReleaseErrorMessage(link, message);
+
+    WSClearError(link);
 
     return Some(string);
 }
@@ -144,6 +169,58 @@ unsafe fn get_expr(link: WSLINK) -> Result<Expr, String> {
     };
 
     Ok(expr)
+}
+
+//======================================
+// Write to the link
+//======================================
+
+unsafe fn put_expr(link: WSLINK, expr: &Expr) -> Result<(), String> {
+    match expr.kind() {
+        ExprKind::Normal(Normal { head, contents }) => {
+            link_try!(link, WSPutType(link, i32::from(wl_wstp_sys::WSTKFUNC)));
+            let contents_len =
+                i32::try_from(contents.len()).expect("usize overflows i32");
+            link_try!(link, WSPutArgCount(link, contents_len));
+
+            let _: () = put_expr(link, &*head)?;
+
+            for elem in contents {
+                let _: () = put_expr(link, elem)?;
+            }
+        },
+        ExprKind::Symbol(symbol) => {
+            let cstring = CString::new(symbol.to_string()).unwrap();
+
+            let len =
+                i32::try_from(cstring.to_bytes().len()).expect("usize overflows i32");
+
+            link_try!(
+                link,
+                WSPutUTF8Symbol(link, cstring.to_bytes().as_ptr(), len)
+            );
+        },
+        ExprKind::String(string) => {
+            let cstring = CString::new(string.clone())
+                .expect("Expr string can not be stored in CString");
+
+            let len =
+                i32::try_from(cstring.to_bytes().len()).expect("usize overflows i32");
+
+            link_try!(
+                link,
+                WSPutUTF8String(link, cstring.to_bytes().as_ptr(), len)
+            );
+        },
+        ExprKind::Number(Number::Integer(int)) => {
+            link_try!(link, WSPutInteger64(link, *int));
+        },
+        ExprKind::Number(Number::Real(real)) => {
+            link_try!(link, WSPutReal64(link, **real));
+        },
+    }
+
+    Ok(())
 }
 
 //======================================
