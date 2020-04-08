@@ -30,7 +30,7 @@ impl WSTPLink {
     pub fn is_ready(&self) -> bool {
         let WSTPLink { link } = *self;
 
-        unsafe { WSReady(link) > 0 }
+        unsafe { WSReady(link) != 0 }
     }
 
     /// Read an expression off of this link.
