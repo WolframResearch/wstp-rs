@@ -42,6 +42,10 @@ unsafe fn error_message_or_unknown(link: WSLINK) -> String {
     error_message(link).unwrap_or_else(|| "unknown error occurred on WSLINK".into())
 }
 
+//======================================
+// Read from the link
+//======================================
+
 unsafe fn get_expr(link: WSLINK) -> Result<Expr, String> {
     use wl_wstp_sys::{WSTKERR, WSTKFUNC, WSTKINT, WSTKREAL, WSTKSTR, WSTKSYM};
 
@@ -141,6 +145,10 @@ unsafe fn get_expr(link: WSLINK) -> Result<Expr, String> {
 
     Ok(expr)
 }
+
+//======================================
+// Utilities
+//======================================
 
 /// This function will panic if `c_string` is not valid UTF-8.
 unsafe fn copy_and_release_cstring(
