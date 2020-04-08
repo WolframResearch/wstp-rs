@@ -5,7 +5,7 @@ use wl_expr::{Expr, ExprKind, Normal, Number, Symbol};
 use wl_wstp_sys::{
     WSClearError, WSEndPacket, WSErrorMessage, WSGetArgCount, WSGetInteger64,
     WSGetReal64, WSGetSymbol, WSGetType, WSGetUTF8String, WSNewPacket, WSPutArgCount,
-    WSPutInteger64, WSPutReal64, WSPutType, WSPutUTF8String, WSPutUTF8Symbol,
+    WSPutInteger64, WSPutReal64, WSPutType, WSPutUTF8String, WSPutUTF8Symbol, WSReady,
     WSReleaseErrorMessage, WSReleaseString, WSReleaseSymbol, WSLINK,
 };
 
@@ -27,6 +27,13 @@ impl WSTPLink {
         WSTPLink { link }
     }
 
+    pub fn is_ready(&self) -> bool {
+        let WSTPLink { link } = *self;
+
+        unsafe { WSReady(link) > 0 }
+    }
+
+    /// G
     pub fn get_expr(&self) -> Result<Expr, String> {
         let WSTPLink { link } = *self;
 
