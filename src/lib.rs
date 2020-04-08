@@ -3,9 +3,8 @@ use std::ffi::CStr;
 
 use wl_expr::{Expr, Number, Symbol};
 use wl_wstp_sys::{
-    WSErrorMessage, WSGetArgCount, WSGetFunction, WSGetInteger64, WSGetNext, WSGetReal64,
-    WSGetSymbol, WSGetType, WSGetUTF8String, WSReleaseErrorMessage, WSReleaseString,
-    WSReleaseSymbol, WSLINK,
+    WSErrorMessage, WSGetArgCount, WSGetInteger64, WSGetReal64, WSGetSymbol, WSGetType,
+    WSGetUTF8String, WSReleaseErrorMessage, WSReleaseString, WSReleaseSymbol, WSLINK,
 };
 
 pub struct WSTPLink {
@@ -34,8 +33,10 @@ unsafe fn get_expr(link: WSLINK) -> Expr {
     if type_ == WSTKERR as i32 {
         let message: *const i8 = WSErrorMessage(link);
         let cstr = CStr::from_ptr(message);
-        let string = cstr.to_str().unwrap();
-        return Expr::string(string);
+        let string = Expr::string(cstr.to_str().unwrap());
+        WSReleaseErrorMessage(link, message);
+
+        return string;
     }
 
     match type_ as u8 {
@@ -84,7 +85,7 @@ unsafe fn get_expr(link: WSLINK) -> Expr {
                 unimplemented!("PRE-COMMIT");
             }
 
-            let string = {
+            let string: String = {
                 let cstr = CStr::from_ptr(c_string);
 
                 let string: &str = cstr.to_str().unwrap();
@@ -105,8 +106,6 @@ unsafe fn get_expr(link: WSLINK) -> Expr {
 
             let arg_count = usize::try_from(arg_count)
                 .expect("WSTKFUNC argument count could not be converted to usize");
-            // if WSGetFunction(link, &mut c_string, &mut arg_count) == 0 {
-            // }
 
             let head = get_expr(link);
 
