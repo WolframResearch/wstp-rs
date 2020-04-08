@@ -110,8 +110,12 @@ unsafe fn get_expr(link: WSLINK) -> Result<Expr, String> {
 
             WSReleaseString(link, c_string);
 
-            let head = Symbol::unchecked_new("Global`FakeHeadA");
-            Expr::normal(head, vec![Expr::string(string)])
+            let symbol: Symbol = match wl_parse::parse_symbol(&string) {
+                Some(sym) => sym,
+                None => return Err(format!("Symbol name `{}` has no context", string)),
+            };
+
+            Expr::symbol(symbol)
         },
         WSTKFUNC => {
             let mut arg_count = 0;

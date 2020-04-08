@@ -9,4 +9,5 @@ publish = false
 
 [dependencies]
 wl-expr = { git = "ssh://git@stash.wolfram.com:7999/~connorg/wl-expr.git" }
+wl-parse = { git = "ssh://git@stash.wolfram.com:7999/~connorg/wl-parse.git" }
 wl-wstp-sys = { git = "ssh://git@stash.wolfram.com:7999/~connorg/wl-wstp-sys.git" }
