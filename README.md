@@ -3,7 +3,7 @@
 See [wl-library-link][wl-library-link] for examples of using this library in LibraryLink
 functions.
 
-[wl-library-link]: https://stash.wolfram.com/users/connorg/wl-library-link/browse
+[wl-library-link]: https://stash.wolfram.com/users/connorg/repos/wl-library-link/browse
 
 ## Reading the documentation
 
