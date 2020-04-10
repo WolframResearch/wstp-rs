@@ -9,6 +9,8 @@ use wl_wstp_sys::{
     WSReleaseErrorMessage, WSReleaseString, WSReleaseSymbol, WSLINK,
 };
 
+pub use wl_wstp_sys as sys;
+
 macro_rules! link_try {
     ($link:expr, $op:expr) => {{
         let link: WSLINK = $link;
