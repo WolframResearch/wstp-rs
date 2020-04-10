@@ -29,6 +29,18 @@ impl WSTPLink {
         WSTPLink { link }
     }
 
+    /// Get the name of this link.
+    ///
+    /// This corresponds to the `WSName()` function from the WSTP C API.
+    pub fn name(&self) -> String {
+        let WSTPLink { link } = *self;
+
+        unsafe {
+            let name: *const i8 = self::sys::WSName(link as *mut _);
+            CStr::from_ptr(name).to_str().unwrap().to_owned()
+        }
+    }
+
     /// Check if there is data ready to be read from this link.
     ///
     /// This corresponds to the `WSReady()` function from the WSTP C API.
