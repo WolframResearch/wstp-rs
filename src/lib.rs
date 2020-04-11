@@ -71,6 +71,11 @@ impl WSTPLink {
             res
         }
     }
+
+    pub unsafe fn raw_link(&self) -> WSLINK {
+        let WSTPLink { link } = *self;
+        link
+    }
 }
 
 unsafe fn error_message(link: WSLINK) -> Option<String> {
