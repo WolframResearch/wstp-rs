@@ -130,7 +130,7 @@ fn get_wolfram_installation() -> PathBuf {
     //       a mis-feature of wolframscript to return the same exit code as the Kernel.
     // TODO: Fix the bug in wolframscript which makes this necessary and remove the check
     //       for `3`.
-    if !output.status.success() && code.status.code() != Some(3) {
+    if !output.status.success() && output.status.code() != Some(3) {
         panic!(
             "wolframscript exited with non-success status code: {}",
             output.status
