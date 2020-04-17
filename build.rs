@@ -36,9 +36,20 @@ cfg_if![if #[cfg(all(target_os = "macos", target_arch = "x86_64"))] {
         let lib = installation.join(WSTP_STATIC_ARCHIVE);
         let lib = lib.to_str()
             .expect("could not convert WSTP archive path to str");
-        let lib = lipo_native_library(lib);
+        // let lib = lipo_native_library(lib);
+        let lib = PathBuf::from(lib);
         link_library_file(lib);
     }
+
+    /* NOTE:
+        This code was necessary prior to 12.1, however, it appears that version changed
+        the layout build of libWSTP to no longer be a "fat" archive (containing both
+        32-bit and 64-bit versions of the same). This is possibly due to the fact that
+        macOS Catalina, released ~6 months ago, dropped support for all 32-bit
+        applications in general.
+
+        I'm electing to leave this code around in the meantime, in case the situation
+        changes, but it appears this `lipo` operation may no longer be necessary.
 
     /// Use the macOS `lipo` command to construct an x86_64 archive file from the WSTPi4.a
     /// file in the Mathematica layout. This is necessary as a workaround to a bug in the
@@ -64,6 +75,7 @@ cfg_if![if #[cfg(all(target_os = "macos", target_arch = "x86_64"))] {
 
         PathBuf::from(output_lib)
     }
+    */
 } else {
     // FIXME: Add support for Windows and Linux platforms.
     compile_error!("unsupported target platform");
