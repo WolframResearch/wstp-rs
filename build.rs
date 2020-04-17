@@ -126,7 +126,11 @@ fn get_wolfram_installation() -> PathBuf {
         .output()
         .expect("unable to execute wolframscript command");
 
-    if !output.status.success() {
+    // NOTE: The purpose of the 2nd clause here checking for exit code 3 is to work around
+    //       a mis-feature of wolframscript to return the same exit code as the Kernel.
+    // TODO: Fix the bug in wolframscript which makes this necessary and remove the check
+    //       for `3`.
+    if !output.status.success() && code.status.code() != Some(3) {
         panic!(
             "wolframscript exited with non-success status code: {}",
             output.status
