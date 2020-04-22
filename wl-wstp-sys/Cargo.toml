@@ -1,0 +1,16 @@
+[package]
+name = "wl-wstp-sys"
+version = "0.1.0"
+authors = ["Connor Gray <accounts@connorgray.com>"]
+edition = "2018"
+publish = false
+
+# TODO(!): Audit this. Is this the correct name? Will it always be correct? What is the
+#          significance of the "i4" suffix -- is that a version number?
+links = "WSTPi4"
+
+[dependencies]
+
+[build-dependencies]
+bindgen = "^0.53"
+cfg-if = "0.1.10"
