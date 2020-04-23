@@ -72,6 +72,16 @@ impl WSTPLink {
         }
     }
 
+    /// Returns a string describing the last error to occur on this link.
+    ///
+    /// TODO: If the most recent operation was successful, does the error message get
+    ///       cleared?
+    pub fn error_message(&self) -> Option<String> {
+        let WSTPLink { link } = *self;
+
+        unsafe { error_message(link) }
+    }
+
     pub unsafe fn raw_link(&self) -> WSLINK {
         let WSTPLink { link } = *self;
         link
