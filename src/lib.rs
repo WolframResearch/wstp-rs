@@ -96,9 +96,7 @@ impl WstpLink {
             let raw_link = sys::WSLoopbackOpen(env.raw_env, &mut err);
 
             if raw_link.is_null() || err != (sys::MLEOK as i32) {
-                return Err(Error {
-                    message: format!("PRE-COMMIT")
-                })
+                return Err(Error::from_code(err));
             }
 
             Ok(WstpLink::unchecked_new(raw_link))
@@ -156,6 +154,8 @@ impl WstpLink {
     ///
     /// TODO: If the most recent operation was successful, does the error message get
     ///       cleared?
+    ///
+    /// *WSTP C API Documentation:* [WSErrorMessage()](https://reference.wolfram.com/language/ref/c/WSErrorMessage.html)
     pub fn error_message(&self) -> Option<String> {
         let WstpLink { raw_link } = *self;
 

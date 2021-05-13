@@ -4,6 +4,15 @@ pub struct Error {
     pub(crate) message: String,
 }
 
+impl Error {
+    pub(crate) fn from_code(code: i32) -> Self {
+        // TODO: Map this to known error codes, provide a better string.
+        Error {
+            message: format!("WSTP error code {} occurred.", code),
+        }
+    }
+}
+
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Error { message } = self;
