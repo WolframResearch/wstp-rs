@@ -1,6 +1,6 @@
 use wl_expr::{Expr, Number};
 use wl_parse::parse_symbol;
-use wl_wstp::{self as wstp, WstpLink, WstpEnv};
+use wl_wstp::{self as wstp, WstpEnv, WstpLink};
 
 fn check_loopback_roundtrip(env: &WstpEnv, expr: Expr) {
     let mut link = WstpLink::new_loopback(&env).expect("failed to create Loopback link");
@@ -17,12 +17,16 @@ fn test_loopback_link() {
     let env = wstp::initialize().unwrap();
 
     check_loopback_roundtrip(&env, Expr::number(Number::Integer(5)));
-    check_loopback_roundtrip(&env, Expr::normal(
-        Expr::symbol(parse_symbol("System`List").unwrap()),
-        vec![Expr::number(Number::Integer(1))]
-    ));
-    check_loopback_roundtrip(&env, Expr::normal(
-        Expr::symbol(parse_symbol("Global`MyHead").unwrap()),
-        vec![Expr::number(Number::Integer(1))]
-    ));
+    check_loopback_roundtrip(
+        &env,
+        Expr::normal(Expr::symbol(parse_symbol("System`List").unwrap()), vec![
+            Expr::number(Number::Integer(1)),
+        ]),
+    );
+    check_loopback_roundtrip(
+        &env,
+        Expr::normal(Expr::symbol(parse_symbol("Global`MyHead").unwrap()), vec![
+            Expr::number(Number::Integer(1)),
+        ]),
+    );
 }
