@@ -35,9 +35,49 @@ macro_rules! link_try {
     }};
 }
 
+/// A WSTP library environment.
+///
+/// See [`initialize()`].
+///
+/// **WSTP C API Documentation:** [WSENV](https://reference.wolfram.com/language/ref/c/WSENV.html).
+pub struct WstpEnv {
+    raw_env: sys::WSENV,
+}
+
 #[derive(Debug)]
 pub struct WstpLink {
     raw_link: WSLINK,
+}
+
+//======================================
+// Impls
+//======================================
+
+pub fn initialize() -> Result<WstpEnv, Error> {
+    let raw_env: sys::WSENV;
+
+    // TODO: Is this thread-safe?
+    //       Is it safe to call WSInitialize() multiple times in the same process?
+    unsafe {
+        raw_env = sys::WSInitialize(std::ptr::null_mut());
+    }
+
+    if raw_env.is_null() {
+        return Err(Error {
+            // TODO: Is there an internal error string which could be included here?
+            message: format!("WSInitialize() failed"),
+        });
+    }
+
+    Ok(WstpEnv { raw_env })
+}
+
+impl WstpEnv {
+    pub fn raw_env(&self) -> sys::WSENV {
+        let WstpEnv { raw_env } = *self;
+
+        raw_env
+    }
 }
 
 impl WstpLink {
