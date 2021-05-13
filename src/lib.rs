@@ -39,11 +39,17 @@ macro_rules! link_try {
 ///
 /// See [`initialize()`].
 ///
-/// **WSTP C API Documentation:** [WSENV](https://reference.wolfram.com/language/ref/c/WSENV.html).
+/// *WSTP C API Documentation:* [WSENV](https://reference.wolfram.com/language/ref/c/WSENV.html).
 pub struct WstpEnv {
     raw_env: sys::WSENV,
 }
 
+/// A WSTP link object.
+///
+/// [`WSClose()`][sys::WSClose] is called on the underlying `WSLINK` when
+/// [`Drop::drop()`][WstpLink::drop] is called for a value of this type.
+///
+/// *WSTP C API Documentation:* [WSLINK](https://reference.wolfram.com/language/ref/c/WSLINK.html)
 #[derive(Debug)]
 pub struct WstpLink {
     raw_link: WSLINK,
@@ -81,13 +87,31 @@ impl WstpEnv {
 }
 
 impl WstpLink {
+    /// Create a new Loopback type link.
+    ///
+    /// *WSTP C API Documentation:* [WSLoopbackOpen()](https://reference.wolfram.com/language/ref/c/WSLoopbackOpen.html)
+    pub fn new_loopback(env: &WstpEnv) -> Result<Self, Error> {
+        unsafe {
+            let mut err: std::os::raw::c_int = sys::MLEOK as i32;
+            let raw_link = sys::WSLoopbackOpen(env.raw_env, &mut err);
+
+            if raw_link.is_null() || err != (sys::MLEOK as i32) {
+                return Err(Error {
+                    message: format!("PRE-COMMIT")
+                })
+            }
+
+            Ok(WstpLink::new(raw_link))
+        }
+    }
+
     pub unsafe fn new(raw_link: WSLINK) -> Self {
         WstpLink { raw_link }
     }
 
     /// Get the name of this link.
     ///
-    /// This corresponds to the `WSName()` function from the WSTP C API.
+    /// *WSTP C API Documentation:* [WSName()](https://reference.wolfram.com/language/ref/c/WSName.html)
     pub fn name(&self) -> String {
         let WstpLink { raw_link } = *self;
 
@@ -99,7 +123,7 @@ impl WstpLink {
 
     /// Check if there is data ready to be read from this link.
     ///
-    /// This corresponds to the `WSReady()` function from the WSTP C API.
+    /// *WSTP C API Documentation:* [WSReady()](https://reference.wolfram.com/language/ref/c/WSReady.html)
     pub fn is_ready(&self) -> bool {
         let WstpLink { raw_link } = *self;
 
