@@ -1,3 +1,5 @@
+mod error;
+
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
 
@@ -13,6 +15,7 @@ use wl_wstp_sys::{
 // Public re-exports and type aliases
 //-----------------------------------
 
+pub use crate::error::Error;
 pub use wl_wstp_sys as sys;
 
 // TODO: Remove this type alias after outside code has had time to update.
@@ -64,14 +67,14 @@ impl WstpLink {
     }
 
     /// Read an expression off of this link.
-    pub fn get_expr(&self) -> Result<Expr, String> {
+    pub fn get_expr(&self) -> Result<Expr, Error> {
         let WstpLink { raw_link } = *self;
 
         unsafe { get_expr(raw_link) }
     }
 
     /// Write an expression to this link.
-    pub fn put_expr(&self, expr: &Expr) -> Result<(), String> {
+    pub fn put_expr(&self, expr: &Expr) -> Result<(), Error> {
         let WstpLink { raw_link: link } = *self;
 
         unsafe {
@@ -92,7 +95,9 @@ impl WstpLink {
     pub fn error_message(&self) -> Option<String> {
         let WstpLink { raw_link } = *self;
 
-        unsafe { error_message(raw_link) }
+        let error = unsafe { error_message(raw_link) };
+
+        error.map(|Error { message }| message)
     }
 
     pub unsafe fn raw_link(&self) -> WSLINK {
@@ -101,7 +106,7 @@ impl WstpLink {
     }
 }
 
-unsafe fn error_message(link: WSLINK) -> Option<String> {
+unsafe fn error_message(link: WSLINK) -> Option<Error> {
     let message: *const i8 = WSErrorMessage(link);
 
     if message.is_null() {
@@ -115,18 +120,20 @@ unsafe fn error_message(link: WSLINK) -> Option<String> {
 
     WSClearError(link);
 
-    return Some(string);
+    return Some(Error { message: string });
 }
 
-unsafe fn error_message_or_unknown(link: WSLINK) -> String {
-    error_message(link).unwrap_or_else(|| "unknown error occurred on WSLINK".into())
+unsafe fn error_message_or_unknown(link: WSLINK) -> Error {
+    error_message(link).unwrap_or_else(|| Error {
+        message: "unknown error occurred on WSLINK".into(),
+    })
 }
 
 //======================================
 // Read from the link
 //======================================
 
-unsafe fn get_expr(link: WSLINK) -> Result<Expr, String> {
+unsafe fn get_expr(link: WSLINK) -> Result<Expr, Error> {
     use wl_wstp_sys::{WSTKERR, WSTKFUNC, WSTKINT, WSTKREAL, WSTKSTR, WSTKSYM};
 
     let type_: i32 = WSGetType(link);
@@ -152,9 +159,11 @@ unsafe fn get_expr(link: WSLINK) -> Result<Expr, String> {
                 Ok(real) => real,
                 // TODO: Try passing a NaN value or a BigReal value through WSLINK.
                 Err(_is_nan) => {
-                    return Err(format!(
+                    return Err(Error {
+                        message: format!(
                         "NaN value passed on WSLINK cannot be used to construct an Expr"
-                    ))
+                    ),
+                    })
                 },
             };
             Expr::number(Number::Real(real))
@@ -196,7 +205,11 @@ unsafe fn get_expr(link: WSLINK) -> Result<Expr, String> {
 
             let symbol: Symbol = match wl_parse::parse_symbol(&string) {
                 Some(sym) => sym,
-                None => return Err(format!("Symbol name `{}` has no context", string)),
+                None => {
+                    return Err(Error {
+                        message: format!("Symbol name `{}` has no context", string),
+                    })
+                },
             };
 
             Expr::symbol(symbol)
@@ -220,7 +233,11 @@ unsafe fn get_expr(link: WSLINK) -> Result<Expr, String> {
 
             Expr::normal(head, contents)
         },
-        _ => return Err(format!("unknown WSLINK type: {}", type_)),
+        _ => {
+            return Err(Error {
+                message: format!("unknown WSLINK type: {}", type_),
+            })
+        },
     };
 
     Ok(expr)
@@ -230,7 +247,7 @@ unsafe fn get_expr(link: WSLINK) -> Result<Expr, String> {
 // Write to the link
 //======================================
 
-unsafe fn put_expr(link: WSLINK, expr: &Expr) -> Result<(), String> {
+unsafe fn put_expr(link: WSLINK, expr: &Expr) -> Result<(), Error> {
     match expr.kind() {
         ExprKind::Normal(Normal { head, contents }) => {
             link_try!(link, WSPutType(link, i32::from(wl_wstp_sys::WSTKFUNC)));
