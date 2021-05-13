@@ -15,6 +15,17 @@ $ cargo doc --document-private-items --open
 
 ## Development
 
+### Testing
+
+Run the tests using a single thread:
+
+```$ shell
+cargo test -- --test-threads=1
+```
+
+This is necessary to prevent the `LinkServer` tests from all trying to bind to the
+same port from multiple threads.
+
 #### `WSTP_COMPILER_ADDITIONS`
 
 By default, the `wl-wstp-sys/build.rs` script will attempt to use
