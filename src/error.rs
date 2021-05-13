@@ -6,6 +6,10 @@ pub struct Error {
 }
 
 impl Error {
+    /// Get the WSTP error code, if applicable.
+    ///
+    /// See listing of WSTP error codes in the [`WSError()`](https://reference.wolfram.com/language/ref/c/WSError.html)
+    /// documentation.
     pub fn code(&self) -> Option<i32> {
         self.code
     }
