@@ -131,14 +131,14 @@ impl WstpLink {
     }
 
     /// Read an expression off of this link.
-    pub fn get_expr(&self) -> Result<Expr, Error> {
+    pub fn get_expr(&mut self) -> Result<Expr, Error> {
         let WstpLink { raw_link } = *self;
 
         unsafe { get_expr(raw_link) }
     }
 
     /// Write an expression to this link.
-    pub fn put_expr(&self, expr: &Expr) -> Result<(), Error> {
+    pub fn put_expr(&mut self, expr: &Expr) -> Result<(), Error> {
         let WstpLink { raw_link: link } = *self;
 
         unsafe {
