@@ -144,6 +144,13 @@ impl WstpLink {
         let WstpLink { raw_link } = *self;
         raw_link
     }
+
+    /// Close this end of the link.
+    ///
+    /// *WSTP C API Documentation:* [WSClose](https://reference.wolfram.com/language/ref/c/WSClose.html)
+    pub fn close(self) {
+        // Note: The link is closed when `self` is dropped.
+    }
 }
 
 unsafe fn error_message(link: WSLINK) -> Option<Error> {
@@ -366,4 +373,18 @@ unsafe fn copy_and_release_cstring(
     }
 
     string
+}
+
+//======================================
+// Drop impls
+//======================================
+
+impl Drop for WstpLink {
+    fn drop(&mut self) {
+        let WstpLink { raw_link } = *self;
+
+        unsafe {
+            sys::WSClose(raw_link);
+        }
+    }
 }
