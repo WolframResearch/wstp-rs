@@ -101,11 +101,11 @@ impl WstpLink {
                 })
             }
 
-            Ok(WstpLink::new(raw_link))
+            Ok(WstpLink::unchecked_new(raw_link))
         }
     }
 
-    pub unsafe fn new(raw_link: WSLINK) -> Self {
+    pub unsafe fn unchecked_new(raw_link: WSLINK) -> Self {
         WstpLink { raw_link }
     }
 
