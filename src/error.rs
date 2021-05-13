@@ -1,5 +1,6 @@
 use std::fmt::{self, Debug, Display};
 
+#[derive(Clone, PartialEq)]
 pub struct Error {
     pub(crate) code: Option<i32>,
     pub(crate) message: String,

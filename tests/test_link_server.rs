@@ -17,10 +17,14 @@ fn test_basic_link_server_creation() {
 
     let env = wstp::initialize().expect("failed to initialize WSTP");
 
-    let _server = LinkServer::new_with_callback(&env, PORT, |link| {
+    let server = LinkServer::new_with_callback(&env, PORT, |link| {
         println!("Got link: {:?}", link);
     })
     .unwrap();
+
+    // Test that the port and interface getters work as expected.
+    assert_eq!(server.port(), Ok(PORT));
+    assert!(server.interface().is_ok());
 }
 
 #[test]
