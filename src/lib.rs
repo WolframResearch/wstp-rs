@@ -4,6 +4,7 @@
 //! transfer Wolfram Language expressions between programs.
 
 mod error;
+mod link_server;
 
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
@@ -21,8 +22,10 @@ use wstp_sys::{
 // Public re-exports and type aliases
 //-----------------------------------
 
-pub use crate::error::Error;
 pub use wstp_sys as sys;
+
+pub use crate::error::Error;
+pub use crate::link_server::LinkServer;
 
 // TODO: Remove this type alias after outside code has had time to update.
 #[deprecated(note = "use WstpLink")]
