@@ -9,7 +9,19 @@ use wl_wstp_sys::{
     WSReleaseErrorMessage, WSReleaseString, WSReleaseSymbol, WSLINK,
 };
 
+//-----------------------------------
+// Public re-exports and type aliases
+//-----------------------------------
+
 pub use wl_wstp_sys as sys;
+
+// TODO: Remove this type alias after outside code has had time to update.
+#[deprecated(note = "use WstpLink")]
+pub type WSTPLink = WstpLink;
+
+//======================================
+// Source
+//======================================
 
 macro_rules! link_try {
     ($link:expr, $op:expr) => {{
@@ -20,23 +32,24 @@ macro_rules! link_try {
     }};
 }
 
-pub struct WSTPLink {
-    link: WSLINK,
+#[derive(Debug)]
+pub struct WstpLink {
+    raw_link: WSLINK,
 }
 
-impl WSTPLink {
-    pub unsafe fn new(link: WSLINK) -> Self {
-        WSTPLink { link }
+impl WstpLink {
+    pub unsafe fn new(raw_link: WSLINK) -> Self {
+        WstpLink { raw_link }
     }
 
     /// Get the name of this link.
     ///
     /// This corresponds to the `WSName()` function from the WSTP C API.
     pub fn name(&self) -> String {
-        let WSTPLink { link } = *self;
+        let WstpLink { raw_link } = *self;
 
         unsafe {
-            let name: *const i8 = self::sys::WSName(link as *mut _);
+            let name: *const i8 = self::sys::WSName(raw_link as *mut _);
             CStr::from_ptr(name).to_str().unwrap().to_owned()
         }
     }
@@ -45,21 +58,21 @@ impl WSTPLink {
     ///
     /// This corresponds to the `WSReady()` function from the WSTP C API.
     pub fn is_ready(&self) -> bool {
-        let WSTPLink { link } = *self;
+        let WstpLink { raw_link } = *self;
 
-        unsafe { WSReady(link) != 0 }
+        unsafe { WSReady(raw_link) != 0 }
     }
 
     /// Read an expression off of this link.
     pub fn get_expr(&self) -> Result<Expr, String> {
-        let WSTPLink { link } = *self;
+        let WstpLink { raw_link } = *self;
 
-        unsafe { get_expr(link) }
+        unsafe { get_expr(raw_link) }
     }
 
     /// Write an expression to this link.
     pub fn put_expr(&self, expr: &Expr) -> Result<(), String> {
-        let WSTPLink { link } = *self;
+        let WstpLink { raw_link: link } = *self;
 
         unsafe {
             WSNewPacket(link);
@@ -77,14 +90,14 @@ impl WSTPLink {
     /// TODO: If the most recent operation was successful, does the error message get
     ///       cleared?
     pub fn error_message(&self) -> Option<String> {
-        let WSTPLink { link } = *self;
+        let WstpLink { raw_link } = *self;
 
-        unsafe { error_message(link) }
+        unsafe { error_message(raw_link) }
     }
 
     pub unsafe fn raw_link(&self) -> WSLINK {
-        let WSTPLink { link } = *self;
-        link
+        let WstpLink { raw_link } = *self;
+        raw_link
     }
 }
 
