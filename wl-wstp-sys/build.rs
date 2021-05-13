@@ -29,6 +29,12 @@ fn main() {
     // Note: This blog post explained this, and that this might need to change on Linux.
     //         https://flames-of-code.netlify.com/blog/rust-and-cmake-cplusplus/
     println!("cargo:rustc-link-lib=dylib=c++");
+
+    // TODO: Look at the complete list of CMake libraries required by WSTP and update this
+    //       logic for Windows and Linux.
+    if cfg!(target_os = "macos") {
+        println!("cargo:rustc-link-lib=framework=Foundation");
+    }
 }
 
 cfg_if![if #[cfg(all(target_os = "macos", target_arch = "x86_64"))] {
