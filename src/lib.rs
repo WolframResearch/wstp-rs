@@ -86,6 +86,7 @@ impl WstpEnv {
     }
 }
 
+/// # Creating WSTP link objects
 impl WstpLink {
     /// Create a new Loopback type link.
     ///
@@ -107,6 +108,17 @@ impl WstpLink {
         WstpLink { raw_link }
     }
 
+
+    /// Close this end of the link.
+    ///
+    /// *WSTP C API Documentation:* [WSClose](https://reference.wolfram.com/language/ref/c/WSClose.html)
+    pub fn close(self) {
+        // Note: The link is closed when `self` is dropped.
+    }
+}
+
+/// # Link properties
+impl WstpLink {
     /// Get the name of this link.
     ///
     /// *WSTP C API Documentation:* [WSName()](https://reference.wolfram.com/language/ref/c/WSName.html)
@@ -128,6 +140,29 @@ impl WstpLink {
         unsafe { WSReady(raw_link) != 0 }
     }
 
+    /// Returns a string describing the last error to occur on this link.
+    ///
+    /// TODO: If the most recent operation was successful, does the error message get
+    ///       cleared?
+    ///
+    /// *WSTP C API Documentation:* [WSErrorMessage()](https://reference.wolfram.com/language/ref/c/WSErrorMessage.html)
+    pub fn error_message(&self) -> Option<String> {
+        let WstpLink { raw_link } = *self;
+
+        let error = unsafe { error_message(raw_link) };
+
+        error.map(|Error { message, code: _ }| message)
+    }
+
+    /// *WSTP C API Documentation:* [WSLINK](https://reference.wolfram.com/language/ref/c/WSLINK.html)
+    pub unsafe fn raw_link(&self) -> WSLINK {
+        let WstpLink { raw_link } = *self;
+        raw_link
+    }
+}
+
+/// # Reading and writing expressions
+impl WstpLink {
     /// Read an expression off of this link.
     pub fn get_expr(&mut self) -> Result<Expr, Error> {
         let WstpLink { raw_link } = *self;
@@ -148,33 +183,6 @@ impl WstpLink {
 
             res
         }
-    }
-
-    /// Returns a string describing the last error to occur on this link.
-    ///
-    /// TODO: If the most recent operation was successful, does the error message get
-    ///       cleared?
-    ///
-    /// *WSTP C API Documentation:* [WSErrorMessage()](https://reference.wolfram.com/language/ref/c/WSErrorMessage.html)
-    pub fn error_message(&self) -> Option<String> {
-        let WstpLink { raw_link } = *self;
-
-        let error = unsafe { error_message(raw_link) };
-
-        error.map(|Error { message, code: _ }| message)
-    }
-
-    /// *WSTP C API Documentation:* [WSLINK](https://reference.wolfram.com/language/ref/c/WSLINK.html)
-    pub unsafe fn raw_link(&self) -> WSLINK {
-        let WstpLink { raw_link } = *self;
-        raw_link
-    }
-
-    /// Close this end of the link.
-    ///
-    /// *WSTP C API Documentation:* [WSClose](https://reference.wolfram.com/language/ref/c/WSClose.html)
-    pub fn close(self) {
-        // Note: The link is closed when `self` is dropped.
     }
 }
 
