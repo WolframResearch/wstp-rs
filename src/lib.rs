@@ -5,10 +5,10 @@ use std::ffi::{CStr, CString};
 
 use wl_expr::{Expr, ExprKind, Normal, Number, Symbol};
 use wl_wstp_sys::{
-    WSClearError, WSEndPacket, WSErrorMessage, WSGetArgCount, WSGetInteger64,
-    WSGetReal64, WSGetSymbol, WSGetType, WSGetUTF8String, WSNewPacket, WSPutArgCount,
-    WSPutInteger64, WSPutReal64, WSPutType, WSPutUTF8String, WSPutUTF8Symbol, WSReady,
-    WSReleaseErrorMessage, WSReleaseString, WSReleaseSymbol, WSLINK,
+    WSEndPacket, WSErrorMessage, WSGetArgCount, WSGetInteger64, WSGetReal64, WSGetSymbol,
+    WSGetType, WSGetUTF8String, WSNewPacket, WSPutArgCount, WSPutInteger64, WSPutReal64,
+    WSPutType, WSPutUTF8String, WSPutUTF8Symbol, WSReady, WSReleaseErrorMessage,
+    WSReleaseString, WSReleaseSymbol, WSLINK,
 };
 
 //-----------------------------------
@@ -142,6 +142,35 @@ impl WstpLink {
         unsafe { WSReady(raw_link) != 0 }
     }
 
+    /// Returns an [`Error`] describing the last error to occur on this link.
+    pub fn error(&self) -> Option<Error> {
+        let WstpLink { raw_link } = *self;
+
+        let (code, message): (i32, *const i8) =
+            unsafe { (sys::WSError(raw_link), WSErrorMessage(raw_link)) };
+
+        if code == (sys::MLEOK as i32) || message.is_null() {
+            return None;
+        }
+
+        let string: String = unsafe {
+            let cstr = CStr::from_ptr(message);
+            let string = cstr.to_str().unwrap().to_owned();
+
+            WSReleaseErrorMessage(raw_link, message);
+            // TODO: Should this method clear the error? If it does, it should at least be
+            //       '&mut self'.
+            // WSClearError(link);
+
+            string
+        };
+
+        return Some(Error {
+            code: Some(code),
+            message: string,
+        });
+    }
+
     /// Returns a string describing the last error to occur on this link.
     ///
     /// TODO: If the most recent operation was successful, does the error message get
@@ -149,11 +178,14 @@ impl WstpLink {
     ///
     /// *WSTP C API Documentation:* [WSErrorMessage()](https://reference.wolfram.com/language/ref/c/WSErrorMessage.html)
     pub fn error_message(&self) -> Option<String> {
-        let WstpLink { raw_link } = *self;
+        self.error().map(|Error { message, code: _ }| message)
+    }
 
-        let error = unsafe { error_message(raw_link) };
-
-        error.map(|Error { message, code: _ }| message)
+    /// Helper to create an [`Error`] instance even if the underlying link does not have
+    /// an error code set.
+    pub(crate) fn error_or_unknown(&self) -> Error {
+        self.error()
+            .unwrap_or_else(|| Error::custom("unknown error occurred on WSLINK".into()))
     }
 
     /// *WSTP C API Documentation:* [WSLINK](https://reference.wolfram.com/language/ref/c/WSLINK.html)
@@ -188,30 +220,8 @@ impl WstpLink {
     }
 }
 
-unsafe fn error_message(link: WSLINK) -> Option<Error> {
-    let code: i32 = sys::WSError(link);
-    let message: *const i8 = WSErrorMessage(link);
-
-    if code == (sys::MLEOK as i32) || message.is_null() {
-        return None;
-    }
-
-    let cstr = CStr::from_ptr(message);
-    let string: String = cstr.to_str().unwrap().to_owned();
-
-    WSReleaseErrorMessage(link, message);
-
-    WSClearError(link);
-
-    return Some(Error {
-        code: Some(code),
-        message: string,
-    });
-}
-
 unsafe fn error_message_or_unknown(link: WSLINK) -> Error {
-    error_message(link)
-        .unwrap_or_else(|| Error::custom("unknown error occurred on WSLINK".into()))
+    WstpLink::unchecked_new(link).error_or_unknown()
 }
 
 //======================================
