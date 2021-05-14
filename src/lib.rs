@@ -69,10 +69,10 @@ pub fn initialize() -> Result<WstpEnv, Error> {
     }
 
     if raw_env.is_null() {
-        return Err(Error {
+        return Err(Error::custom(
             // TODO: Is there an internal error string which could be included here?
-            message: format!("WSInitialize() failed"),
-        });
+            format!("WSInitialize() failed"),
+        ));
     }
 
     Ok(WstpEnv { raw_env })
@@ -161,7 +161,7 @@ impl WstpLink {
 
         let error = unsafe { error_message(raw_link) };
 
-        error.map(|Error { message }| message)
+        error.map(|Error { message, code: _ }| message)
     }
 
     pub unsafe fn raw_link(&self) -> WSLINK {
@@ -178,9 +178,10 @@ impl WstpLink {
 }
 
 unsafe fn error_message(link: WSLINK) -> Option<Error> {
+    let code: i32 = sys::WSError(link);
     let message: *const i8 = WSErrorMessage(link);
 
-    if message.is_null() {
+    if code == (sys::MLEOK as i32) || message.is_null() {
         return None;
     }
 
@@ -191,13 +192,15 @@ unsafe fn error_message(link: WSLINK) -> Option<Error> {
 
     WSClearError(link);
 
-    return Some(Error { message: string });
+    return Some(Error {
+        code: Some(code),
+        message: string,
+    });
 }
 
 unsafe fn error_message_or_unknown(link: WSLINK) -> Error {
-    error_message(link).unwrap_or_else(|| Error {
-        message: "unknown error occurred on WSLINK".into(),
-    })
+    error_message(link)
+        .unwrap_or_else(|| Error::custom("unknown error occurred on WSLINK".into()))
 }
 
 //======================================
@@ -230,11 +233,9 @@ unsafe fn get_expr(link: WSLINK) -> Result<Expr, Error> {
                 Ok(real) => real,
                 // TODO: Try passing a NaN value or a BigReal value through WSLINK.
                 Err(_is_nan) => {
-                    return Err(Error {
-                        message: format!(
+                    return Err(Error::custom(format!(
                         "NaN value passed on WSLINK cannot be used to construct an Expr"
-                    ),
-                    })
+                    )))
                 },
             };
             Expr::number(Number::Real(real))
@@ -277,9 +278,10 @@ unsafe fn get_expr(link: WSLINK) -> Result<Expr, Error> {
             let symbol: Symbol = match wl_parse::parse_symbol(&string) {
                 Some(sym) => sym,
                 None => {
-                    return Err(Error {
-                        message: format!("Symbol name `{}` has no context", string),
-                    })
+                    return Err(Error::custom(format!(
+                        "Symbol name `{}` has no context",
+                        string
+                    )))
                 },
             };
 
@@ -304,11 +306,7 @@ unsafe fn get_expr(link: WSLINK) -> Result<Expr, Error> {
 
             Expr::normal(head, contents)
         },
-        _ => {
-            return Err(Error {
-                message: format!("unknown WSLINK type: {}", type_),
-            })
-        },
+        _ => return Err(Error::custom(format!("unknown WSLINK type: {}", type_))),
     };
 
     Ok(expr)
