@@ -164,6 +164,7 @@ impl WstpLink {
         error.map(|Error { message, code: _ }| message)
     }
 
+    /// *WSTP C API Documentation:* [WSLINK](https://reference.wolfram.com/language/ref/c/WSLINK.html)
     pub unsafe fn raw_link(&self) -> WSLINK {
         let WstpLink { raw_link } = *self;
         raw_link
