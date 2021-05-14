@@ -50,6 +50,8 @@ pub struct WstpEnv {
 /// [`Drop::drop()`][WstpLink::drop] is called for a value of this type.
 ///
 /// *WSTP C API Documentation:* [WSLINK](https://reference.wolfram.com/language/ref/c/WSLINK.html)
+///
+/// *Wolfram Language Documentation:* [LinkObject](https://reference.wolfram.com/language/ref/LinkObject.html)
 #[derive(Debug)]
 pub struct WstpLink {
     raw_link: WSLINK,
