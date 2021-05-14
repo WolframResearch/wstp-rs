@@ -11,20 +11,29 @@ use std::env;
 use std::path::PathBuf;
 use std::process;
 
-const WSTP_FRAMEWORK: &str = "Frameworks/wstp.framework/";
-const WSTP_STATIC_ARCHIVE: &str =
-    "SystemFiles/Links/WSTP/DeveloperKit/MacOSX-x86-64/CompilerAdditions/libWSTPi4.a";
+const WSTP_FRAMEWORK: &str = "wstp.framework/";
+const WSTP_STATIC_ARCHIVE: &str = "libWSTPi4.a";
 
 fn main() {
-    let installation = get_wolfram_installation();
+    // Path to the WSTP SDK 'CompilerAdditions' directory, which contains the libary
+    // header files and static and dynamic library files.
+    let sdk_compiler_additions = get_compiler_additions_directory();
 
     println!(
-        "cargo:warning=info: Using Wolfram installation at: {}",
-        installation.display()
+        "cargo:warning=info: Using WSTP CompilerAdditions directory at: {}",
+        sdk_compiler_additions.display()
     );
 
-    generate_bindings(&installation);
-    link_wstp_statically(&installation);
+    if !sdk_compiler_additions.is_dir() {
+        println!(
+            "cargo:error=WSTP CompilerAdditions directory does not exist: {}",
+            sdk_compiler_additions.display()
+        );
+        panic!();
+    }
+
+    generate_bindings(&sdk_compiler_additions);
+    link_wstp_statically(&sdk_compiler_additions);
 
     // Note: This blog post explained this, and that this might need to change on Linux.
     //         https://flames-of-code.netlify.com/blog/rust-and-cmake-cplusplus/
@@ -38,25 +47,29 @@ fn main() {
 }
 
 cfg_if![if #[cfg(all(target_os = "macos", target_arch = "x86_64"))] {
-    fn link_wstp_statically(installation: &PathBuf) {
-        let lib = installation.join(WSTP_STATIC_ARCHIVE);
+    fn link_wstp_statically(compiler_additions: &PathBuf) {
+        let lib = compiler_additions.join(WSTP_STATIC_ARCHIVE);
         let lib = lib.to_str()
             .expect("could not convert WSTP archive path to str");
-        // let lib = lipo_native_library(lib);
-        let lib = PathBuf::from(lib);
+        let lib = lipo_native_library(&lib);
         link_library_file(lib);
     }
 
     /* NOTE:
-        This code was necessary prior to 12.1, however, it appears that version changed
-        the layout build of libWSTP to no longer be a "fat" archive (containing both
-        32-bit and 64-bit versions of the same). This is possibly due to the fact that
-        macOS Catalina, released ~6 months ago, dropped support for all 32-bit
-        applications in general.
+        This code was necessary prior to 12.1, where the versions of WSTP in the
+        Mathematica layout were univeral binaries containing 32-bit and 64-bit copies of
+        the libary. However, it appears that starting with 12.1, the layout build of
+        libWSTP is no longer a "fat" archive. (This is possibly due to the fact that macOS
+        Catalina, released ~6 months prior, and dropped support for 32-bit applications on
+        macOS.)
 
         I'm electing to leave this code around in the meantime, in case the situation
         changes, but it appears this `lipo` operation may no longer be necessary.
 
+        Update: This code is still useful, because the advent of ARM macOS machines means
+                that local development builds of WSTP will build universal x86_64 and
+                arm64 binaries by default on macOS.
+    */
     /// Use the macOS `lipo` command to construct an x86_64 archive file from the WSTPi4.a
     /// file in the Mathematica layout. This is necessary as a workaround to a bug in the
     /// Rust compiler at the moment: https://github.com/rust-lang/rust/issues/50220.
@@ -65,6 +78,21 @@ cfg_if![if #[cfg(all(target_os = "macos", target_arch = "x86_64"))] {
     /// architecture. The `lipo -thin` command creates a new archive which contains just
     /// the library for the named architecture.
     fn lipo_native_library(wstp_lib: &str) -> PathBuf {
+        // `lipo` will return an error if run on a non-universal binary, so avoid doing
+        // that by using the `file` command to check the type of `wstp_lib`.
+        let is_universal_binary = {
+            let stdout = process::Command::new("file")
+                .args(&[wstp_lib])
+                .output()
+                .expect("failed to run `file` system utility").stdout;
+            let stdout = String::from_utf8(stdout).unwrap();
+            stdout.contains("Mach-O universal binary")
+        };
+
+        if !is_universal_binary {
+            return PathBuf::from(wstp_lib);
+        }
+
         // Place the lipo'd library file in the system temporary directory.
         let output_lib = std::env::temp_dir().join("libWSTP-x86-64.a");
         let output_lib = output_lib.to_str()
@@ -81,7 +109,6 @@ cfg_if![if #[cfg(all(target_os = "macos", target_arch = "x86_64"))] {
 
         PathBuf::from(output_lib)
     }
-    */
 } else {
     // FIXME: Add support for Windows and Linux platforms.
     compile_error!("unsupported target platform");
@@ -100,13 +127,15 @@ fn link_library_file(libfile: PathBuf) {
     println!("cargo:rustc-link-lib=static={}", libname);
 }
 
-fn generate_bindings(installation: &PathBuf) {
-    let header = installation.join(&*WSTP_FRAMEWORK).join("Headers/wstp.h");
+fn generate_bindings(compiler_additions: &PathBuf) {
+    let header = compiler_additions
+        .join(&*WSTP_FRAMEWORK)
+        .join("Headers/wstp.h");
 
     let bindings = bindgen::Builder::default()
         .clang_arg(format!(
             "-I/{}",
-            installation
+            compiler_additions
                 .join(&*WSTP_FRAMEWORK)
                 .join("Headers/")
                 .display()
@@ -131,6 +160,34 @@ fn generate_bindings(installation: &PathBuf) {
         .write_to_file(out_path)
         .expect("failed to write Rust bindings with IO error");
 }
+
+//======================================
+// Path lookup
+//======================================
+
+fn get_compiler_additions_directory() -> PathBuf {
+    if let Some(path) = get_env_var("WSTP_COMPILER_ADDITIONS") {
+        let path = PathBuf::from(path);
+        // Force a rebuild if the path has changed. This happens when developing WSTP.
+        println!("cargo:rerun-if-changed={}", path.display());
+        return path;
+    }
+
+    get_wolfram_installation()
+        .join("SystemFiles/Links/WSTP/DeveloperKit/")
+        .join(SYSTEM_ID)
+        .join("CompilerAdditions")
+}
+
+cfg_if![
+    if #[cfg(all(target_os = "macos", target_arch = "x86_64"))] {
+        const SYSTEM_ID: &str = "MacOSX-x86-64";
+    } else {
+        // FIXME: Update this to include common Linux/Windows (and ARM macOS)
+        //        platforms.
+        compile_error!("wl-wstp-sys is unimplemented for this platform");
+    }
+];
 
 /// Evaluate `$InstallationDirectory` using wolframscript to get location of the
 /// developers Mathematica installation.
@@ -163,7 +220,7 @@ fn get_wolfram_installation() -> PathBuf {
                 err,
                 String::from_utf8_lossy(&output.stdout)
             );
-        }
+        },
     };
 
     let first_line = stdout
@@ -172,4 +229,15 @@ fn get_wolfram_installation() -> PathBuf {
         .expect("wolframscript output was empty");
 
     PathBuf::from(first_line)
+}
+
+fn get_env_var(var: &'static str) -> Option<String> {
+    println!("cargo:rerun-if-env-changed={}", var);
+    match std::env::var(var) {
+        Ok(string) => Some(string),
+        Err(std::env::VarError::NotPresent) => None,
+        Err(std::env::VarError::NotUnicode(err)) => {
+            panic!("value of env var '{}' is not valid unicode: {:?}", var, err)
+        },
+    }
 }
