@@ -5,8 +5,8 @@ use std::ffi::{CStr, CString};
 
 use wl_expr::{Expr, ExprKind, Normal, Number, Symbol};
 use wl_wstp_sys::{
-    WSEndPacket, WSErrorMessage, WSGetArgCount, WSGetInteger64, WSGetReal64, WSGetType,
-    WSGetUTF8String, WSNewPacket, WSPutArgCount, WSPutInteger64, WSPutReal64, WSPutType,
+    WSErrorMessage, WSGetArgCount, WSGetInteger64, WSGetReal64, WSGetType,
+    WSGetUTF8String, WSPutArgCount, WSPutInteger64, WSPutReal64, WSPutType,
     WSPutUTF8String, WSPutUTF8Symbol, WSReady, WSReleaseErrorMessage, WSReleaseString,
     WSReleaseSymbol, WSLINK,
 };
@@ -216,19 +216,41 @@ impl WstpLink {
 
     /// Write an expression to this link.
     pub fn put_expr(&mut self, expr: &Expr) -> Result<(), Error> {
-        let WstpLink { raw_link: link } = *self;
+        match expr.kind() {
+            ExprKind::Normal(Normal { head, contents }) => {
+                let contents_len =
+                    i32::try_from(contents.len()).expect("usize overflows i32");
 
-        unsafe {
-            WSNewPacket(link);
+                unsafe {
+                    if WSPutType(self.raw_link, i32::from(wl_wstp_sys::WSTKFUNC)) == 0 {
+                        return Err(self.error_or_unknown());
+                    }
+                    if WSPutArgCount(self.raw_link, contents_len) == 0 {
+                        return Err(self.error_or_unknown());
+                    }
+                }
 
-            let res = put_expr(self, expr);
+                let _: () = self.put_expr(&*head)?;
 
-            if WSEndPacket(link) == 0 {
-                return Err(self.error_or_unknown());
-            }
-
-            res
+                for elem in contents {
+                    let _: () = self.put_expr(elem)?;
+                }
+            },
+            ExprKind::Symbol(symbol) => {
+                self.put_symbol(symbol.as_str())?;
+            },
+            ExprKind::String(string) => {
+                self.put_str(string.as_str())?;
+            },
+            ExprKind::Number(Number::Integer(int)) => {
+                self.put_i64(*int)?;
+            },
+            ExprKind::Number(Number::Real(real)) => {
+                self.put_f64(**real)?;
+            },
         }
+
+        Ok(())
     }
 
     /// *WSTP C API Documentation:* [`WSGetInteger64()`](https://reference.wolfram.com/language/ref/c/WSGetInteger64.html)
@@ -503,44 +525,6 @@ fn get_expr(link: &mut WstpLink) -> Result<Expr, Error> {
 //======================================
 // Write to the link
 //======================================
-
-fn put_expr(link: &mut WstpLink, expr: &Expr) -> Result<(), Error> {
-    match expr.kind() {
-        ExprKind::Normal(Normal { head, contents }) => {
-            let contents_len =
-                i32::try_from(contents.len()).expect("usize overflows i32");
-
-            unsafe {
-                if WSPutType(link.raw_link, i32::from(wl_wstp_sys::WSTKFUNC)) == 0 {
-                    return Err(link.error_or_unknown());
-                }
-                if WSPutArgCount(link.raw_link, contents_len) == 0 {
-                    return Err(link.error_or_unknown());
-                }
-            }
-
-            let _: () = put_expr(link, &*head)?;
-
-            for elem in contents {
-                let _: () = put_expr(link, elem)?;
-            }
-        },
-        ExprKind::Symbol(symbol) => {
-            link.put_symbol(symbol.as_str())?;
-        },
-        ExprKind::String(string) => {
-            link.put_str(string.as_str())?;
-        },
-        ExprKind::Number(Number::Integer(int)) => {
-            link.put_i64(*int)?;
-        },
-        ExprKind::Number(Number::Real(real)) => {
-            link.put_f64(**real)?;
-        },
-    }
-
-    Ok(())
-}
 
 //======================================
 // Utilities
