@@ -39,7 +39,7 @@ macro_rules! link_try {
 ///
 /// See [`initialize()`].
 ///
-/// *WSTP C API Documentation:* [WSENV](https://reference.wolfram.com/language/ref/c/WSENV.html).
+/// *WSTP C API Documentation:* [`WSENV`](https://reference.wolfram.com/language/ref/c/WSENV.html).
 pub struct WstpEnv {
     raw_env: sys::WSENV,
 }
@@ -49,9 +49,9 @@ pub struct WstpEnv {
 /// [`WSClose()`][sys::WSClose] is called on the underlying `WSLINK` when
 /// [`Drop::drop()`][WstpLink::drop] is called for a value of this type.
 ///
-/// *WSTP C API Documentation:* [WSLINK](https://reference.wolfram.com/language/ref/c/WSLINK.html)
+/// *WSTP C API Documentation:* [`WSLINK`](https://reference.wolfram.com/language/ref/c/WSLINK.html)
 ///
-/// *Wolfram Language Documentation:* [LinkObject](https://reference.wolfram.com/language/ref/LinkObject.html)
+/// *Wolfram Language Documentation:* [`LinkObject`](https://reference.wolfram.com/language/ref/LinkObject.html)
 #[derive(Debug)]
 pub struct WstpLink {
     raw_link: WSLINK,
@@ -92,7 +92,7 @@ impl WstpEnv {
 impl WstpLink {
     /// Create a new Loopback type link.
     ///
-    /// *WSTP C API Documentation:* [WSLoopbackOpen()](https://reference.wolfram.com/language/ref/c/WSLoopbackOpen.html)
+    /// *WSTP C API Documentation:* [`WSLoopbackOpen()`](https://reference.wolfram.com/language/ref/c/WSLoopbackOpen.html)
     pub fn new_loopback(env: &WstpEnv) -> Result<Self, Error> {
         unsafe {
             let mut err: std::os::raw::c_int = sys::MLEOK as i32;
@@ -113,7 +113,7 @@ impl WstpLink {
 
     /// Close this end of the link.
     ///
-    /// *WSTP C API Documentation:* [WSClose](https://reference.wolfram.com/language/ref/c/WSClose.html)
+    /// *WSTP C API Documentation:* [`WSClose()`](https://reference.wolfram.com/language/ref/c/WSClose.html)
     pub fn close(self) {
         // Note: The link is closed when `self` is dropped.
     }
@@ -123,7 +123,7 @@ impl WstpLink {
 impl WstpLink {
     /// Get the name of this link.
     ///
-    /// *WSTP C API Documentation:* [WSName()](https://reference.wolfram.com/language/ref/c/WSName.html)
+    /// *WSTP C API Documentation:* [`WSName()`](https://reference.wolfram.com/language/ref/c/WSName.html)
     pub fn name(&self) -> String {
         let WstpLink { raw_link } = *self;
 
@@ -135,7 +135,7 @@ impl WstpLink {
 
     /// Check if there is data ready to be read from this link.
     ///
-    /// *WSTP C API Documentation:* [WSReady()](https://reference.wolfram.com/language/ref/c/WSReady.html)
+    /// *WSTP C API Documentation:* [`WSReady()`](https://reference.wolfram.com/language/ref/c/WSReady.html)
     pub fn is_ready(&self) -> bool {
         let WstpLink { raw_link } = *self;
 
@@ -176,7 +176,7 @@ impl WstpLink {
     /// TODO: If the most recent operation was successful, does the error message get
     ///       cleared?
     ///
-    /// *WSTP C API Documentation:* [WSErrorMessage()](https://reference.wolfram.com/language/ref/c/WSErrorMessage.html)
+    /// *WSTP C API Documentation:* [`WSErrorMessage()`](https://reference.wolfram.com/language/ref/c/WSErrorMessage.html)
     pub fn error_message(&self) -> Option<String> {
         self.error().map(|Error { message, code: _ }| message)
     }
@@ -188,7 +188,7 @@ impl WstpLink {
             .unwrap_or_else(|| Error::custom("unknown error occurred on WSLINK".into()))
     }
 
-    /// *WSTP C API Documentation:* [WSLINK](https://reference.wolfram.com/language/ref/c/WSLINK.html)
+    /// *WSTP C API Documentation:* [`WSLINK`](https://reference.wolfram.com/language/ref/c/WSLINK.html)
     pub unsafe fn raw_link(&self) -> WSLINK {
         let WstpLink { raw_link } = *self;
         raw_link
