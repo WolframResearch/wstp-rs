@@ -26,15 +26,6 @@ pub type WSTPLink = WstpLink;
 // Source
 //======================================
 
-macro_rules! link_try {
-    ($link:expr, $op:expr) => {{
-        let link: WSLINK = $link;
-        if $op == 0 {
-            return Err(error_message_or_unknown(link));
-        }
-    }};
-}
-
 /// A WSTP library environment.
 ///
 /// See [`initialize()`].
@@ -232,7 +223,9 @@ impl WstpLink {
 
             let res = put_expr(self, expr);
 
-            link_try!(link, WSEndPacket(link));
+            if WSEndPacket(link) == 0 {
+                return Err(self.error_or_unknown());
+            }
 
             res
         }
@@ -438,10 +431,6 @@ impl<'link> Drop for LinkStr<'link> {
     }
 }
 
-unsafe fn error_message_or_unknown(link: WSLINK) -> Error {
-    WstpLink::unchecked_new(link).error_or_unknown()
-}
-
 //======================================
 // Read from the link
 //======================================
@@ -522,11 +511,12 @@ fn put_expr(link: &mut WstpLink, expr: &Expr) -> Result<(), Error> {
                 i32::try_from(contents.len()).expect("usize overflows i32");
 
             unsafe {
-                link_try!(
-                    link.raw_link,
-                    WSPutType(link.raw_link, i32::from(wl_wstp_sys::WSTKFUNC))
-                );
-                link_try!(link.raw_link, WSPutArgCount(link.raw_link, contents_len));
+                if WSPutType(link.raw_link, i32::from(wl_wstp_sys::WSTKFUNC)) == 0 {
+                    return Err(link.error_or_unknown());
+                }
+                if WSPutArgCount(link.raw_link, contents_len) == 0 {
+                    return Err(link.error_or_unknown());
+                }
             }
 
             let _: () = put_expr(link, &*head)?;
