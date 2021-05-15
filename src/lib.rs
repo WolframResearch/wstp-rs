@@ -59,7 +59,7 @@ pub struct WstpLink {
 
 /// Reference to string data borrowed from a [`WstpLink`].
 ///
-/// `LinkStr` is returned from [`WstpLink::get_string_ref()`] and [`WstpLink::get_symbol()`].
+/// `LinkStr` is returned from [`WstpLink::get_string_ref()`] and [`WstpLink::get_symbol_ref()`].
 ///
 /// When [`LinkStr::drop()`] is called, `WSReleaseString()` is used to deallocate the
 /// underlying string.
@@ -230,7 +230,7 @@ impl WstpLink {
         unsafe {
             WSNewPacket(link);
 
-            let res = put_expr(link, expr);
+            let res = put_expr(self, expr);
 
             link_try!(link, WSEndPacket(link));
 
@@ -327,6 +327,61 @@ impl WstpLink {
             // Needed to control whether `WSReleaseString` or `WSReleaseSymbol` is called.
             is_symbol: true,
         })
+    }
+
+    /// *WSTP C API Documentation:* [`WSPutInteger64()`](https://reference.wolfram.com/language/ref/c/WSPutInteger64.html)
+    pub fn put_i64(&mut self, value: i64) -> Result<(), Error> {
+        if unsafe { WSPutInteger64(self.raw_link, value) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+        Ok(())
+    }
+
+    /// *WSTP C API Documentation:* [`WSPutReal64()`](https://reference.wolfram.com/language/ref/c/WSPutReal64.html)
+    pub fn put_f64(&mut self, value: f64) -> Result<(), Error> {
+        if unsafe { WSPutReal64(self.raw_link, value) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+        Ok(())
+    }
+
+    /// *WSTP C API Documentation:* [`WSPutUTF8String()`](https://reference.wolfram.com/language/ref/c/WSPutUTF8String.html)
+    pub fn put_str(&mut self, string: &str) -> Result<(), Error> {
+        // TODO: Optimization:
+        //     This intermediate CString allocation may not actually be necessary. Because
+        //     WSPutUTF8String() takes a pointer + length pair, it's possible it doesn't
+        //     require that the string be NULL terminated. I'm not confident that is the
+        //     case though, and it isn't explicitly documented one way or the other.
+        //     Investigate this in the WSTP sources, and fix this if possible. If fixed,
+        //     be sure to include this assertion (`str`'s can contain NULL bytes, and
+        //     I have much less confidence that older parts of WSTP are strict about not
+        //     using strlen() on strings internally).
+        //
+        //         assert!(!string.bytes().any(|byte| byte == 0));
+        let c_string = CString::new(string).unwrap();
+
+        let len = i32::try_from(c_string.as_bytes().len()).expect("usize overflows i32");
+        let ptr = c_string.as_ptr() as *const u8;
+
+        if unsafe { WSPutUTF8String(self.raw_link, ptr, len) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        Ok(())
+    }
+
+    /// *WSTP C API Documentation:* [`WSPutUTF8Symbol()`](https://reference.wolfram.com/language/ref/c/WSPutUTF8Symbol.html)
+    pub fn put_symbol(&mut self, symbol: &str) -> Result<(), Error> {
+        let c_string = CString::new(symbol).unwrap();
+
+        let len = i32::try_from(c_string.as_bytes().len()).expect("usize overflows i32");
+        let ptr = c_string.as_ptr() as *const u8;
+
+        if unsafe { WSPutUTF8Symbol(self.raw_link, ptr, len) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        Ok(())
     }
 }
 
@@ -460,13 +515,19 @@ fn get_expr(link: &mut WstpLink) -> Result<Expr, Error> {
 // Write to the link
 //======================================
 
-unsafe fn put_expr(link: WSLINK, expr: &Expr) -> Result<(), Error> {
+fn put_expr(link: &mut WstpLink, expr: &Expr) -> Result<(), Error> {
     match expr.kind() {
         ExprKind::Normal(Normal { head, contents }) => {
-            link_try!(link, WSPutType(link, i32::from(wl_wstp_sys::WSTKFUNC)));
             let contents_len =
                 i32::try_from(contents.len()).expect("usize overflows i32");
-            link_try!(link, WSPutArgCount(link, contents_len));
+
+            unsafe {
+                link_try!(
+                    link.raw_link,
+                    WSPutType(link.raw_link, i32::from(wl_wstp_sys::WSTKFUNC))
+                );
+                link_try!(link.raw_link, WSPutArgCount(link.raw_link, contents_len));
+            }
 
             let _: () = put_expr(link, &*head)?;
 
@@ -475,33 +536,16 @@ unsafe fn put_expr(link: WSLINK, expr: &Expr) -> Result<(), Error> {
             }
         },
         ExprKind::Symbol(symbol) => {
-            let cstring = CString::new(symbol.to_string()).unwrap();
-
-            let len =
-                i32::try_from(cstring.to_bytes().len()).expect("usize overflows i32");
-
-            link_try!(
-                link,
-                WSPutUTF8Symbol(link, cstring.to_bytes().as_ptr(), len)
-            );
+            link.put_symbol(symbol.as_str())?;
         },
         ExprKind::String(string) => {
-            let cstring = CString::new(string.clone())
-                .expect("Expr string can not be stored in CString");
-
-            let len =
-                i32::try_from(cstring.to_bytes().len()).expect("usize overflows i32");
-
-            link_try!(
-                link,
-                WSPutUTF8String(link, cstring.to_bytes().as_ptr(), len)
-            );
+            link.put_str(string.as_str())?;
         },
         ExprKind::Number(Number::Integer(int)) => {
-            link_try!(link, WSPutInteger64(link, *int));
+            link.put_i64(*int)?;
         },
         ExprKind::Number(Number::Real(real)) => {
-            link_try!(link, WSPutReal64(link, **real));
+            link.put_f64(**real)?;
         },
     }
 
