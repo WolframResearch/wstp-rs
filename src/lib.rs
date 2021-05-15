@@ -5,10 +5,10 @@ use std::ffi::{CStr, CString};
 
 use wl_expr::{Expr, ExprKind, Normal, Number, Symbol};
 use wl_wstp_sys::{
-    WSEndPacket, WSErrorMessage, WSGetArgCount, WSGetInteger64, WSGetReal64, WSGetSymbol,
-    WSGetType, WSGetUTF8String, WSNewPacket, WSPutArgCount, WSPutInteger64, WSPutReal64,
-    WSPutType, WSPutUTF8String, WSPutUTF8Symbol, WSReady, WSReleaseErrorMessage,
-    WSReleaseString, WSReleaseSymbol, WSLINK,
+    WSEndPacket, WSErrorMessage, WSGetArgCount, WSGetInteger64, WSGetReal64, WSGetType,
+    WSGetUTF8String, WSNewPacket, WSPutArgCount, WSPutInteger64, WSPutReal64, WSPutType,
+    WSPutUTF8String, WSPutUTF8Symbol, WSReady, WSReleaseErrorMessage, WSReleaseString,
+    WSReleaseSymbol, WSLINK,
 };
 
 //-----------------------------------
@@ -297,6 +297,37 @@ impl WstpLink {
     pub fn get_string(&mut self) -> Result<String, Error> {
         Ok(self.get_string_ref()?.to_str().to_owned())
     }
+
+    /// *WSTP C API Documentation:* [`WSGetUTF8Symbol()`](https://reference.wolfram.com/language/ref/c/WSGetUTF8Symbol.html)
+    pub fn get_symbol_ref<'link>(&'link mut self) -> Result<LinkStr<'link>, Error> {
+        let mut c_string: *const u8 = std::ptr::null();
+        let mut num_bytes: i32 = 0;
+        let mut num_chars = 0;
+
+        if unsafe {
+            sys::WSGetUTF8Symbol(
+                self.raw_link,
+                &mut c_string,
+                &mut num_bytes,
+                &mut num_chars,
+            )
+        } == 0
+        {
+            // NOTE: According to the documentation, we do NOT have to release
+            //      `string` if the function returns an error.
+            return Err(self.error_or_unknown());
+        }
+
+        let num_bytes = usize::try_from(num_bytes).unwrap();
+
+        Ok(LinkStr {
+            link: self,
+            c_string,
+            byte_length: num_bytes,
+            // Needed to control whether `WSReleaseString` or `WSReleaseSymbol` is called.
+            is_symbol: true,
+        })
+    }
 }
 
 impl<'link> LinkStr<'link> {
@@ -387,27 +418,15 @@ unsafe fn get_expr(safe_link: &mut WstpLink) -> Result<Expr, Error> {
         },
         WSTKSTR => Expr::string(safe_link.get_string_ref()?.to_str()),
         WSTKSYM => {
-            let mut c_string: *const i8 = std::ptr::null();
+            let symbol_link_str = safe_link.get_symbol_ref()?;
+            let symbol_str = symbol_link_str.to_str();
 
-            if WSGetSymbol(link, &mut c_string) == 0 {
-                return Err(error_message_or_unknown(link));
-            }
-
-            let string: String = {
-                let cstr = CStr::from_ptr(c_string);
-
-                let string: &str = cstr.to_str().unwrap();
-                string.to_owned()
-            };
-
-            WSReleaseString(link, c_string);
-
-            let symbol: Symbol = match wl_parse::parse_symbol(&string) {
+            let symbol: Symbol = match wl_parse::parse_symbol(symbol_str) {
                 Some(sym) => sym,
                 None => {
                     return Err(Error::custom(format!(
                         "Symbol name `{}` has no context",
-                        string
+                        symbol_str
                     )))
                 },
             };

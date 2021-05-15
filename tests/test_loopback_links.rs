@@ -38,9 +38,17 @@ fn test_loopback_get_put_atoms() {
     let mut link = WstpLink::new_loopback(&env).expect("failed to create Loopback link");
 
     {
-        // Test the `WstpLink::get_str()` method.
+        // Test the `WstpLink::get_string_ref()` method.
         link.put_expr(&Expr::string("Hello!")).unwrap();
         let link_str: LinkStr = link.get_string_ref().unwrap();
         assert_eq!(link_str.to_str(), "Hello!")
+    }
+
+    {
+        // Test the `WstpLink::get_symbol_ref()` method.
+        link.put_expr(&Expr::symbol(parse_symbol("System`Plot").unwrap()))
+            .unwrap();
+        let link_str: LinkStr = link.get_symbol_ref().unwrap();
+        assert_eq!(link_str.to_str(), "System`Plot")
     }
 }
