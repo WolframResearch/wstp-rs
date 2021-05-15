@@ -77,6 +77,7 @@ pub struct LinkStr<'link> {
 // Impls
 //======================================
 
+/// *WSTP C API Documentation:* [`WSInitialize()`](https://reference.wolfram.com/language/ref/c/WSInitialize.html)
 pub fn initialize() -> Result<WstpEnv, Error> {
     let raw_env: sys::WSENV;
 
