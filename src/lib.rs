@@ -220,7 +220,7 @@ impl WstpLink {
 impl WstpLink {
     /// Read an expression off of this link.
     pub fn get_expr(&mut self) -> Result<Expr, Error> {
-        unsafe { get_expr(self) }
+        get_expr(self)
     }
 
     /// Write an expression to this link.
@@ -391,21 +391,19 @@ unsafe fn error_message_or_unknown(link: WSLINK) -> Error {
 // Read from the link
 //======================================
 
-unsafe fn get_expr(safe_link: &mut WstpLink) -> Result<Expr, Error> {
+fn get_expr(link: &mut WstpLink) -> Result<Expr, Error> {
     use wl_wstp_sys::{WSTKERR, WSTKFUNC, WSTKINT, WSTKREAL, WSTKSTR, WSTKSYM};
 
-    let link = safe_link.raw_link;
-
-    let type_: i32 = WSGetType(link);
+    let type_: i32 = unsafe { WSGetType(link.raw_link) };
 
     if type_ == WSTKERR as i32 {
-        return Err(error_message_or_unknown(link));
+        return Err(link.error_or_unknown());
     }
 
     let expr: Expr = match type_ as u8 {
-        WSTKINT => Expr::number(Number::Integer(safe_link.get_i64()?)),
+        WSTKINT => Expr::number(Number::Integer(link.get_i64()?)),
         WSTKREAL => {
-            let real: wl_expr::F64 = match wl_expr::F64::new(safe_link.get_f64()?) {
+            let real: wl_expr::F64 = match wl_expr::F64::new(link.get_f64()?) {
                 Ok(real) => real,
                 // TODO: Try passing a NaN value or a BigReal value through WSLINK.
                 Err(_is_nan) => {
@@ -416,9 +414,9 @@ unsafe fn get_expr(safe_link: &mut WstpLink) -> Result<Expr, Error> {
             };
             Expr::number(Number::Real(real))
         },
-        WSTKSTR => Expr::string(safe_link.get_string_ref()?.to_str()),
+        WSTKSTR => Expr::string(link.get_string_ref()?.to_str()),
         WSTKSYM => {
-            let symbol_link_str = safe_link.get_symbol_ref()?;
+            let symbol_link_str = link.get_symbol_ref()?;
             let symbol_str = symbol_link_str.to_str();
 
             let symbol: Symbol = match wl_parse::parse_symbol(symbol_str) {
@@ -436,18 +434,18 @@ unsafe fn get_expr(safe_link: &mut WstpLink) -> Result<Expr, Error> {
         WSTKFUNC => {
             let mut arg_count = 0;
 
-            if WSGetArgCount(link, &mut arg_count) == 0 {
-                return Err(error_message_or_unknown(link));
+            if unsafe { WSGetArgCount(link.raw_link, &mut arg_count) } == 0 {
+                return Err(link.error_or_unknown());
             }
 
             let arg_count = usize::try_from(arg_count)
                 .expect("WSTKFUNC argument count could not be converted to usize");
 
-            let head = safe_link.get_expr()?;
+            let head = link.get_expr()?;
 
             let mut contents = Vec::with_capacity(arg_count);
             for _ in 0..arg_count {
-                contents.push(safe_link.get_expr()?);
+                contents.push(link.get_expr()?);
             }
 
             Expr::normal(head, contents)
