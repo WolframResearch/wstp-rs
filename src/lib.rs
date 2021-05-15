@@ -57,6 +57,22 @@ pub struct WstpLink {
     raw_link: WSLINK,
 }
 
+/// Reference to string data borrowed from a [`WstpLink`].
+///
+/// `LinkStr` is returned from [`WstpLink::get_string_ref()`] and [`WstpLink::get_symbol()`].
+///
+/// When [`LinkStr::drop()`] is called, `WSReleaseString()` is used to deallocate the
+/// underlying string.
+pub struct LinkStr<'link> {
+    link: &'link WstpLink,
+    // Note: See `LinkStr::to_str()` for discussion of the safety reasons we *don't* store
+    //       a `&str` field (even though that would have the benefit of paying the UTF-8
+    //       validation penalty only once).
+    c_string: *const u8,
+    byte_length: usize,
+    is_symbol: bool,
+}
+
 //======================================
 // Impls
 //======================================
@@ -143,6 +159,10 @@ impl WstpLink {
     }
 
     /// Returns an [`Error`] describing the last error to occur on this link.
+    ///
+    /// # Examples
+    ///
+    /// **TODO:** Example of getting an error code.
     pub fn error(&self) -> Option<Error> {
         let WstpLink { raw_link } = *self;
 
@@ -199,9 +219,7 @@ impl WstpLink {
 impl WstpLink {
     /// Read an expression off of this link.
     pub fn get_expr(&mut self) -> Result<Expr, Error> {
-        let WstpLink { raw_link } = *self;
-
-        unsafe { get_expr(raw_link) }
+        unsafe { get_expr(self) }
     }
 
     /// Write an expression to this link.
@@ -218,6 +236,119 @@ impl WstpLink {
             res
         }
     }
+
+    /// *WSTP C API Documentation:* [`WSGetInteger64()`](https://reference.wolfram.com/language/ref/c/WSGetInteger64.html)
+    pub fn get_i64(&mut self) -> Result<i64, Error> {
+        let mut int = 0;
+        if unsafe { WSGetInteger64(self.raw_link, &mut int) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+        Ok(int)
+    }
+
+    /// *WSTP C API Documentation:* [`WSGetReal64()`](https://reference.wolfram.com/language/ref/c/WSGetReal64.html)
+    pub fn get_f64(&mut self) -> Result<f64, Error> {
+        let mut real: f64 = 0.0;
+        if unsafe { WSGetReal64(self.raw_link, &mut real) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+        Ok(real)
+    }
+
+    // TODO:
+    //     Reserving the name `get_str()` in case it's possible in the future to implement
+    //     implement a `WstpLink::get_str() -> &str` method. It may be safe to do that if
+    //     we either:
+    //
+    //       * Keep track of all the strings we need to call `WSReleaseString` on, and
+    //         then do so in `WstpLink::drop()`.
+    //       * Verify that we don't need to explicitly deallocate the string data, because
+    //         they will be deallocated when the mempool is freed (presumably during
+    //         WSClose()?).
+
+    /// *WSTP C API Documentation:* [`WSGetUTF8String()`](https://reference.wolfram.com/language/ref/c/WSGetUTF8String.html)
+    pub fn get_string_ref<'link>(&'link mut self) -> Result<LinkStr<'link>, Error> {
+        let mut c_string: *const u8 = std::ptr::null();
+        let mut num_bytes: i32 = 0;
+        let mut num_chars = 0;
+
+        if unsafe {
+            WSGetUTF8String(self.raw_link, &mut c_string, &mut num_bytes, &mut num_chars)
+        } == 0
+        {
+            // NOTE: According to the documentation, we do NOT have to release
+            //      `string` if the function returns an error.
+            return Err(self.error_or_unknown());
+        }
+
+        let num_bytes = usize::try_from(num_bytes).unwrap();
+
+        Ok(LinkStr {
+            link: self,
+            c_string,
+            byte_length: num_bytes,
+            // Needed to control whether `WSReleaseString` or `WSReleaseSymbol` is called.
+            is_symbol: false,
+        })
+    }
+
+    /// Convenience wrapper around [`WstpLink::get_string_ref()`].
+    pub fn get_string(&mut self) -> Result<String, Error> {
+        Ok(self.get_string_ref()?.to_str().to_owned())
+    }
+}
+
+impl<'link> LinkStr<'link> {
+    /// Get the UTF-8 string data.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the contents of the string are not valid UTF-8.
+    pub fn to_str<'s>(&'s self) -> &'s str {
+        let LinkStr {
+            link: _,
+            c_string,
+            byte_length,
+            is_symbol: _,
+        } = *self;
+
+        // Safety: Assert this pre-condition of `slice::from_raw_parts()`.
+        assert!(byte_length < usize::try_from(isize::MAX).unwrap());
+
+        // SAFETY:
+        //     It is important that the lifetime of `bytes` is tied to `self` and NOT to
+        //     'link. A `&'link str` could outlive the `LinkStr` object, which would lead
+        //     to a a use-after-free bug because the string data is deallocated when
+        //     `LinkStr` is dropped.
+        let bytes: &'s [u8] =
+            unsafe { std::slice::from_raw_parts(c_string, byte_length) };
+
+        // TODO: Optimization: Do we trust WSTP enough to always produce valid UTF-8 to
+        //       use `str::from_utf8_unchecked()` here? If a client writes malformed data
+        //       with WSPutUTF8String, does WSTP validate it and return an error, or would
+        //       it be passed through to unsuspecting us?
+        // This function will panic if `c_string` is not valid UTF-8.
+        std::str::from_utf8(bytes).expect("WSTP returned non-UTF-8 string")
+    }
+}
+
+impl<'link> Drop for LinkStr<'link> {
+    fn drop(&mut self) {
+        let LinkStr {
+            link,
+            c_string,
+            byte_length: _,
+            is_symbol,
+        } = *self;
+
+        let c_string = c_string as *const i8;
+
+        // Deallocate the string data.
+        match is_symbol {
+            true => unsafe { WSReleaseSymbol(link.raw_link, c_string) },
+            false => unsafe { WSReleaseString(link.raw_link, c_string) },
+        }
+    }
 }
 
 unsafe fn error_message_or_unknown(link: WSLINK) -> Error {
@@ -228,8 +359,10 @@ unsafe fn error_message_or_unknown(link: WSLINK) -> Error {
 // Read from the link
 //======================================
 
-unsafe fn get_expr(link: WSLINK) -> Result<Expr, Error> {
+unsafe fn get_expr(safe_link: &mut WstpLink) -> Result<Expr, Error> {
     use wl_wstp_sys::{WSTKERR, WSTKFUNC, WSTKINT, WSTKREAL, WSTKSTR, WSTKSYM};
+
+    let link = safe_link.raw_link;
 
     let type_: i32 = WSGetType(link);
 
@@ -238,19 +371,9 @@ unsafe fn get_expr(link: WSLINK) -> Result<Expr, Error> {
     }
 
     let expr: Expr = match type_ as u8 {
-        WSTKINT => {
-            let mut int = 0;
-            if WSGetInteger64(link, &mut int) == 0 {
-                return Err(error_message_or_unknown(link));
-            }
-            Expr::number(Number::Integer(int))
-        },
+        WSTKINT => Expr::number(Number::Integer(safe_link.get_i64()?)),
         WSTKREAL => {
-            let mut real: f64 = 0.0;
-            if WSGetReal64(link, &mut real) == 0 {
-                return Err(error_message_or_unknown(link));
-            }
-            let real: wl_expr::F64 = match wl_expr::F64::new(real) {
+            let real: wl_expr::F64 = match wl_expr::F64::new(safe_link.get_f64()?) {
                 Ok(real) => real,
                 // TODO: Try passing a NaN value or a BigReal value through WSLINK.
                 Err(_is_nan) => {
@@ -261,25 +384,7 @@ unsafe fn get_expr(link: WSLINK) -> Result<Expr, Error> {
             };
             Expr::number(Number::Real(real))
         },
-        WSTKSTR => {
-            let mut c_string: *const u8 = std::ptr::null();
-            let mut num_bytes: i32 = 0;
-            let mut num_chars = 0;
-            if WSGetUTF8String(link, &mut c_string, &mut num_bytes, &mut num_chars) == 0 {
-                // NOTE: According to the documentation, we do NOT have to release
-                //      `string` if the function returns an error.
-                return Err(error_message_or_unknown(link));
-            }
-
-            let string = copy_and_release_cstring(
-                link,
-                c_string,
-                usize::try_from(num_bytes).unwrap(),
-                false,
-            );
-
-            Expr::string(string)
-        },
+        WSTKSTR => Expr::string(safe_link.get_string_ref()?.to_str()),
         WSTKSYM => {
             let mut c_string: *const i8 = std::ptr::null();
 
@@ -318,11 +423,11 @@ unsafe fn get_expr(link: WSLINK) -> Result<Expr, Error> {
             let arg_count = usize::try_from(arg_count)
                 .expect("WSTKFUNC argument count could not be converted to usize");
 
-            let head = get_expr(link)?;
+            let head = safe_link.get_expr()?;
 
             let mut contents = Vec::with_capacity(arg_count);
             for _ in 0..arg_count {
-                contents.push(get_expr(link)?);
+                contents.push(safe_link.get_expr()?);
             }
 
             Expr::normal(head, contents)
@@ -388,35 +493,6 @@ unsafe fn put_expr(link: WSLINK, expr: &Expr) -> Result<(), Error> {
 //======================================
 // Utilities
 //======================================
-
-/// This function will panic if `c_string` is not valid UTF-8.
-unsafe fn copy_and_release_cstring(
-    link: WSLINK,
-    c_string: *const u8,
-    byte_count: usize,
-    is_symbol: bool,
-) -> String {
-    let bytes: &[u8] = std::slice::from_raw_parts(c_string, byte_count);
-
-    let string: String = match String::from_utf8(bytes.to_vec()) {
-        Ok(string) => string,
-        Err(_) => String::from_utf8_lossy(bytes).to_string(),
-    };
-
-    let c_string = c_string as *const i8;
-
-    // Deallocate the string data.
-    match is_symbol {
-        // TODO: It's not clear if there is actually any difference between
-        //       WSReleaseSymbol() and WSReleaseString(). It's probable that they're both
-        //       implemented by just calling free(). Verify this and remove this branch
-        //       and the `is_symbol` parameter.
-        true => WSReleaseSymbol(link, c_string),
-        false => WSReleaseString(link, c_string),
-    }
-
-    string
-}
 
 //======================================
 // Drop impls

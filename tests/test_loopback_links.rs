@@ -1,6 +1,6 @@
 use wl_expr::{Expr, Number};
 use wl_parse::parse_symbol;
-use wl_wstp::{self as wstp, WstpEnv, WstpLink};
+use wl_wstp::{self as wstp, LinkStr, WstpEnv, WstpLink};
 
 fn check_loopback_roundtrip(env: &WstpEnv, expr: Expr) {
     let mut link = WstpLink::new_loopback(&env).expect("failed to create Loopback link");
@@ -29,4 +29,18 @@ fn test_loopback_link() {
             Expr::number(Number::Integer(1)),
         ]),
     );
+}
+
+#[test]
+fn test_loopback_get_put_atoms() {
+    let env = wstp::initialize().unwrap();
+
+    let mut link = WstpLink::new_loopback(&env).expect("failed to create Loopback link");
+
+    {
+        // Test the `WstpLink::get_str()` method.
+        link.put_expr(&Expr::string("Hello!")).unwrap();
+        let link_str: LinkStr = link.get_string_ref().unwrap();
+        assert_eq!(link_str.to_str(), "Hello!")
+    }
 }
