@@ -638,6 +638,9 @@ fn get_expr(link: &mut WstpLink) -> Result<Expr, Error> {
             }
 
             let arg_count = usize::try_from(arg_count)
+                // This really shouldn't happen on any modern 32/64 bit OS. If this
+                // condition *is* reached, it's more likely going to be do to an ABI or
+                // numeric environment handling issue.
                 .expect("WSTKFUNC argument count could not be converted to usize");
 
             let head = link.get_expr()?;
