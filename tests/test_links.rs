@@ -10,6 +10,10 @@ fn random_link_name() -> String {
         .collect()
 }
 
+//======================================
+// IntraProcess
+//======================================
+
 #[test]
 fn test_intra_process_links() {
     // let name: String = dbg!(random_link_name());
@@ -36,7 +40,7 @@ fn test_intra_process_links() {
     });
 
     let mut connector =
-        WstpLink::connect(&env, Protocol::IntraProcess, name.clone()).unwrap();
+        WstpLink::connect(&env, Protocol::IntraProcess, &name).unwrap();
 
     let connector_thread = std::thread::spawn(move || {
         connector

@@ -161,11 +161,7 @@ impl WstpLink {
     }
 
     /// Connect to an existing named WSTP link.
-    pub fn connect(
-        env: &WstpEnv,
-        protocol: Protocol,
-        name: String,
-    ) -> Result<Self, Error> {
+    pub fn connect(env: &WstpEnv, protocol: Protocol, name: &str) -> Result<Self, Error> {
         let protocol_string = protocol.to_string();
 
         let strings: &[&str] = &[
@@ -176,7 +172,7 @@ impl WstpLink {
             "-linkprotocol",
             protocol_string.as_str(),
             "-linkname",
-            name.as_str(),
+            name,
         ];
 
         WstpLink::open_with_args(env, strings)
