@@ -28,7 +28,7 @@ same port from multiple threads.
 
 #### `WSTP_COMPILER_ADDITIONS`
 
-By default, the `wl-wstp-sys/build.rs` script will attempt to use
+By default, the `wstp-sys/build.rs` script will attempt to use
 [`wolframscript`](https://www.wolfram.com/wolframscript/) to evaluate
 [`$InstallationDirectory`](https://reference.wolfram.com/language/ref/$InstallationDirectory.html)
 to locate your local Wolfram installation, and will use the WSTP library version contained

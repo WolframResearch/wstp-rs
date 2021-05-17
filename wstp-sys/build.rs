@@ -185,7 +185,7 @@ cfg_if![
     } else {
         // FIXME: Update this to include common Linux/Windows (and ARM macOS)
         //        platforms.
-        compile_error!("wl-wstp-sys is unimplemented for this platform");
+        compile_error!("wstp-sys is unimplemented for this platform");
     }
 ];
 
