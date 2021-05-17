@@ -131,8 +131,8 @@ impl WstpLink {
 impl WstpLink {
     /// Get the name of this link.
     ///
-    /// *WSTP C API Documentation:* [`WSName()`](https://reference.wolfram.com/language/ref/c/WSName.html)
-    pub fn name(&self) -> String {
+    /// *WSTP C API Documentation:* [`WSLinkName()`](https://reference.wolfram.com/language/ref/c/WSLinkName.html)
+    pub fn link_name(&self) -> String {
         let WstpLink { raw_link } = *self;
 
         unsafe {
