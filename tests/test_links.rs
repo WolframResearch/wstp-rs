@@ -1,4 +1,4 @@
-use wl_wstp::{self as wstp, Protocol, WstpLink};
+use wstp::{Protocol, WstpLink};
 
 fn random_link_name() -> String {
     use rand::{distributions::Alphanumeric, Rng};

@@ -10,7 +10,7 @@ use std::ffi::{CStr, CString};
 use std::fmt::{self, Display};
 
 use wl_expr::{Expr, ExprKind, Normal, Number, Symbol};
-use wl_wstp_sys::{
+use wstp_sys::{
     WSErrorMessage, WSGetArgCount, WSGetInteger64, WSGetReal64, WSGetType,
     WSGetUTF8String, WSPutArgCount, WSPutInteger64, WSPutReal64, WSPutType,
     WSPutUTF8String, WSPutUTF8Symbol, WSReady, WSReleaseErrorMessage, WSReleaseString,
@@ -22,7 +22,7 @@ use wl_wstp_sys::{
 //-----------------------------------
 
 pub use crate::error::Error;
-pub use wl_wstp_sys as sys;
+pub use wstp_sys as sys;
 
 // TODO: Remove this type alias after outside code has had time to update.
 #[deprecated(note = "use WstpLink")]
@@ -360,7 +360,7 @@ impl WstpLink {
                     i32::try_from(contents.len()).expect("usize overflows i32");
 
                 unsafe {
-                    if WSPutType(self.raw_link, i32::from(wl_wstp_sys::WSTKFUNC)) == 0 {
+                    if WSPutType(self.raw_link, i32::from(sys::WSTKFUNC)) == 0 {
                         return Err(self.error_or_unknown());
                     }
                     if WSPutArgCount(self.raw_link, contents_len) == 0 {
@@ -596,7 +596,7 @@ impl<'link> Drop for LinkStr<'link> {
 //======================================
 
 fn get_expr(link: &mut WstpLink) -> Result<Expr, Error> {
-    use wl_wstp_sys::{WSTKERR, WSTKFUNC, WSTKINT, WSTKREAL, WSTKSTR, WSTKSYM};
+    use wstp_sys::{WSTKERR, WSTKFUNC, WSTKINT, WSTKREAL, WSTKSTR, WSTKSYM};
 
     let type_: i32 = unsafe { WSGetType(link.raw_link) };
 

@@ -1,4 +1,4 @@
-# wl-wstp
+# wstp
 
 See [wl-library-link][wl-library-link] for examples of using this library in LibraryLink
 functions.

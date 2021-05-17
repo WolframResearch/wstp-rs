@@ -1,6 +1,6 @@
 use wl_expr::{Expr, Number};
 use wl_parse::parse_symbol;
-use wl_wstp::{self as wstp, LinkStr, WstpEnv, WstpLink};
+use wstp::{LinkStr, WstpEnv, WstpLink};
 
 fn check_loopback_roundtrip(env: &WstpEnv, expr: Expr) {
     let mut link = WstpLink::new_loopback(&env).expect("failed to create Loopback link");
