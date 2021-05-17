@@ -170,9 +170,18 @@ impl WstpLink {
 
     /// Connect to an existing named WSTP link.
     pub fn connect(env: &WstpEnv, protocol: Protocol, name: &str) -> Result<Self, Error> {
+        WstpLink::connect_with_options(env, protocol, name, &[])
+    }
+
+    pub fn connect_with_options(
+        env: &WstpEnv,
+        protocol: Protocol,
+        name: &str,
+        options: &[&str],
+    ) -> Result<Self, Error> {
         let protocol_string = protocol.to_string();
 
-        let strings: &[&str] = &[
+        let mut strings: Vec<&str> = vec![
             "-wstp",
             // "-linkconnect",
             "-linkmode",
@@ -183,7 +192,12 @@ impl WstpLink {
             name,
         ];
 
-        WstpLink::open_with_args(env, strings)
+        if !options.is_empty() {
+            strings.push("-linkoptions");
+            strings.extend(options);
+        }
+
+        WstpLink::open_with_args(env, &strings)
     }
 
     /// *WSTP C API Documentation:* [`WSOpenArgcArgv()`](https://reference.wolfram.com/language/ref/c/WSOpenArgcArgv.html)

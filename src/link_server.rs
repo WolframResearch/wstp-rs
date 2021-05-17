@@ -17,6 +17,34 @@ pub struct LinkServer {
 }
 
 impl LinkServer {
+    /// Create a new link server.
+    ///
+    /// It is not possible to register a callback function to accept new link connections
+    /// after the link server has been created. Use [`LinkServer::new_with_callback()`] if
+    /// that functionality is desired.
+    ///
+    /// Use [`LinkServer::accept()`] to accept new connections to the link server.
+    pub fn new(env: &WstpEnv, port: u16) -> Result<Self, Error> {
+        let mut err: std::os::raw::c_int = sys::MLEOK as i32;
+
+        let raw_server: sys::WSLinkServer = unsafe {
+            sys::WSNewLinkServerWithPort(
+                env.raw_env,
+                port,
+                std::ptr::null_mut(),
+                &mut err,
+            )
+        };
+
+        if raw_server.is_null() || err != (sys::MLEOK as i32) {
+            return Err(Error::from_code(err));
+        }
+
+        Ok(LinkServer {
+            raw_link_server: raw_server,
+        })
+    }
+
     /// The callback is required to be [`Send`] so that it can be called from the link
     /// server's background thread, which accepts incoming connections.
     pub fn new_with_callback<F>(
@@ -124,6 +152,31 @@ impl LinkServer {
     /// *WSTP C API Documentation:* [`WSShutdownLinkServer`](https://reference.wolfram.com/language/ref/c/WSShutdownLinkServer.html)
     pub fn close(self) {
         // Note: The link server is closed when `self` is dropped.
+    }
+
+    /// Accept a new incomming connection to this link server.
+    ///
+    /// This method blocks the current thread indefinitely until a connection is made to
+    /// the port this link server is bound to.
+    ///
+    /// Use [`LinkServer::new_with_callback()`] to create a link server which accepts
+    /// connections asyncronously via a callback function.
+    ///
+    /// *WSTP C API Documentation:* [`WSWaitForNewLinkFromLinkServer`](https://reference.wolfram.com/language/ref/c/WSWaitForNewLinkFromLinkServer.html)
+    pub fn accept(&mut self) -> Result<WstpLink, Error> {
+        let mut err: c_int = sys::MLEOK as i32;
+
+        let raw_link = unsafe {
+            sys::WSWaitForNewLinkFromLinkServer(self.raw_link_server, &mut err)
+        };
+
+        if raw_link.is_null() || err != (sys::MLEOK as i32) {
+            return Err(Error::from_code(err));
+        }
+
+        let link = unsafe { WstpLink::unchecked_new(raw_link) };
+
+        Ok(link)
     }
 
     /// Returns the raw [`WSLinkServer`](https://reference.wolfram.com/language/ref/c/WSLinkServer.html)
