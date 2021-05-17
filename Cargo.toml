@@ -12,3 +12,6 @@ wl-wstp-sys = { path = "./wl-wstp-sys" }
 
 wl-expr = { git = "ssh://git@stash.wolfram.com:7999/~connorg/wl-expr.git" }
 wl-parse = { git = "ssh://git@stash.wolfram.com:7999/~connorg/wl-parse.git" }
+
+[dev-dependencies]
+rand = "0.8.3"

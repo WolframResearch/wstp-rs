@@ -2,6 +2,7 @@ mod error;
 
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
+use std::fmt::{self, Display};
 
 use wl_expr::{Expr, ExprKind, Normal, Number, Symbol};
 use wl_wstp_sys::{
@@ -48,6 +49,17 @@ pub struct WstpLink {
     raw_link: WSLINK,
 }
 
+/// # Safety
+///
+/// `WstpLink` links can be sent between threads, but they cannot be used from multiple
+/// threads at once (unless `WSEnableLinkLock()` has been called on the link). So `WstpLink`
+/// satisfies [`Send`] but not [`Sync`].
+///
+/// **TODO:**
+///   Add a wrapper type for `WstpLink` which enforces that `WSEnableLinkLock()`
+///   has been called, and implements [`Sync`].
+unsafe impl Send for WstpLink {}
+
 /// Reference to string data borrowed from a [`WstpLink`].
 ///
 /// `LinkStr` is returned from [`WstpLink::get_string_ref()`] and [`WstpLink::get_symbol_ref()`].
@@ -62,6 +74,20 @@ pub struct LinkStr<'link> {
     c_string: *const u8,
     byte_length: usize,
     is_symbol: bool,
+}
+
+/// Transport protocol used to communicate between two [`WstpLink`] end points.
+pub enum Protocol {
+    /// Protocol type optimized for communication between two [`WstpLink`] end points
+    /// from within the same OS process.
+    IntraProcess,
+    /// Protocol type optimized for communication between two [`WstpLink`] end points
+    /// from the same machine — but not necessarily in the same OS process — using [shared
+    /// memory](https://en.wikipedia.org/wiki/Shared_memory).
+    SharedMemory,
+    /// Protocol type for communication between two [`WstpLink`] end points reachable
+    /// across a network connection.
+    TCPIP,
 }
 
 //======================================
@@ -114,10 +140,110 @@ impl WstpLink {
         }
     }
 
+    /// Create a new named WSTP link using `protocol`.
+    pub fn listen(env: &WstpEnv, protocol: Protocol, name: &str) -> Result<Self, Error> {
+        let protocol_string = protocol.to_string();
+
+        let strings: &[&str] = &[
+            "-wstp",
+            "-linkmode",
+            "listen",
+            "-linkprotocol",
+            protocol_string.as_str(),
+            "-linkname",
+            name,
+            // Prevent "Link created on: .." message from being printed.
+            "-linkoptions",
+            "MLDontInteract",
+        ];
+
+        WstpLink::open_with_args(env, strings)
+    }
+
+    /// Connect to an existing named WSTP link.
+    pub fn connect(
+        env: &WstpEnv,
+        protocol: Protocol,
+        name: String,
+    ) -> Result<Self, Error> {
+        let protocol_string = protocol.to_string();
+
+        let strings: &[&str] = &[
+            "-wstp",
+            // "-linkconnect",
+            "-linkmode",
+            "connect",
+            "-linkprotocol",
+            protocol_string.as_str(),
+            "-linkname",
+            name.as_str(),
+        ];
+
+        WstpLink::open_with_args(env, strings)
+    }
+
+    /// *WSTP C API Documentation:* [`WSOpenArgcArgv()`](https://reference.wolfram.com/language/ref/c/WSOpenArgcArgv.html)
+    ///
+    /// This function can be used to create a `WstpLink` of any protocol and mode. Prefer
+    /// to use one of constructor methods listed below when you know the type of link to
+    /// be created.
+    ///
+    /// * [`WstpLink::listen()`]
+    /// * [`WstpLink::connect()`]
+    /// * [`WstpLink::launch()`]
+    /// * [`WstpLink::parent_connect()`]
+    pub fn open_with_args(env: &WstpEnv, args: &[&str]) -> Result<Self, Error> {
+        // NOTE: Before returning, we must convert these back into CString's to
+        //       deallocate them.
+        let mut c_strings: Vec<*mut i8> = args
+            .into_iter()
+            .map(|&str| {
+                CString::new(str)
+                    .expect("failed to create CString from WSTP link open argument")
+                    .into_raw()
+            })
+            .collect();
+
+        let mut err: std::os::raw::c_int = sys::MLEOK as i32;
+
+        let raw_link = unsafe {
+            sys::WSOpenArgcArgv(
+                env.raw_env(),
+                i32::try_from(c_strings.len()).unwrap(),
+                c_strings.as_mut_ptr(),
+                &mut err,
+            )
+        };
+
+        // Convert the `*mut i8` C strings back into owned CString's, so that they are
+        // deallocated.
+        for c_string in c_strings {
+            unsafe {
+                let _ = CString::from_raw(c_string);
+            }
+        }
+
+        if raw_link.is_null() || err != (sys::MLEOK as i32) {
+            return Err(Error::from_code(err));
+        }
+
+        Ok(WstpLink { raw_link })
+    }
+
     pub unsafe fn unchecked_new(raw_link: WSLINK) -> Self {
         WstpLink { raw_link }
     }
 
+    /// *WSTP C API Documentation:* [`WSActivate()`](https://reference.wolfram.com/language/ref/c/WSActivate.html)
+    pub fn activate(&mut self) -> Result<(), Error> {
+        // Note: WSActivate() returns 0 in the event of an error, and sets an error
+        //       code retrievable by WSError().
+        if unsafe { sys::WSActivate(self.raw_link) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        Ok(())
+    }
 
     /// Close this end of the link.
     ///
@@ -209,6 +335,17 @@ impl WstpLink {
 
 /// # Reading and writing expressions
 impl WstpLink {
+    /// Flush out any buffers containing data waiting to be sent on this link.
+    ///
+    /// *WSTP C API Documentation:* [`WSFlush()`](https://reference.wolfram.com/language/ref/c/WSFlush.html)
+    pub fn flush(&mut self) -> Result<(), Error> {
+        if unsafe { sys::WSFlush(self.raw_link) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        Ok(())
+    }
+
     /// Read an expression off of this link.
     pub fn get_expr(&mut self) -> Result<Expr, Error> {
         get_expr(self)
@@ -529,6 +666,22 @@ fn get_expr(link: &mut WstpLink) -> Result<Expr, Error> {
 //======================================
 // Utilities
 //======================================
+
+//======================================
+// Formatting impls
+//======================================
+
+impl Display for Protocol {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let str = match self {
+            Protocol::IntraProcess => "IntraProcess",
+            Protocol::SharedMemory => "SharedMemory",
+            Protocol::TCPIP => "TCPIP",
+        };
+
+        write!(f, "{}", str)
+    }
+}
 
 //======================================
 // Drop impls
