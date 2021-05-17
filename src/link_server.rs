@@ -1,4 +1,5 @@
 use std::ffi::CStr;
+use std::os::raw::c_int;
 use std::str::FromStr;
 
 use crate::{sys, Error, WstpEnv, WstpLink};
@@ -74,11 +75,14 @@ impl LinkServer {
     ///
     /// *WSTP C API Documentation:* [WSInterfaceFromLinkServer](https://reference.wolfram.com/language/ref/c/WSInterfaceFromLinkServer.html)
     pub fn interface(&self) -> Result<std::net::IpAddr, Error> {
-        let mut err: std::os::raw::c_int = sys::MLEOK as i32;
+        let mut err: c_int = sys::MLEOK as i32;
 
         let iface_cstr =
             unsafe { sys::WSInterfaceFromLinkServer(self.raw_link_server, &mut err) };
 
+        if iface_cstr.is_null() || err != (sys::MLEOK as i32) {
+            return Err(Error::from_code(err));
+        }
 
         let iface: String = unsafe {
             let iface = CStr::from_ptr(iface_cstr);
