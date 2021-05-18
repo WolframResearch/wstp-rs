@@ -10,7 +10,7 @@ publish = false
 [dependencies]
 wstp-sys = { path = "./wstp-sys" }
 
-wl-expr = { git = "ssh://git@stash.wolfram.com:7999/~connorg/wl-expr.git" }
+wl-expr = { package = "wl-expr-core", git = "ssh://git@stash.wolfram.com:7999/~connorg/wl-expr-core.git" }
 wl-parse = { git = "ssh://git@stash.wolfram.com:7999/~connorg/wl-parse.git" }
 
 [dev-dependencies]
