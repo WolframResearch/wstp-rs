@@ -1,5 +1,4 @@
-use wl_expr::{Expr, Number};
-use wl_parse::parse_symbol;
+use wl_expr::{Expr, Number, Symbol};
 use wstp::{LinkStr, WstpEnv, WstpLink};
 
 fn check_loopback_roundtrip(env: &WstpEnv, expr: Expr) {
@@ -19,13 +18,13 @@ fn test_loopback_link() {
     check_loopback_roundtrip(&env, Expr::number(Number::Integer(5)));
     check_loopback_roundtrip(
         &env,
-        Expr::normal(Expr::symbol(parse_symbol("System`List").unwrap()), vec![
+        Expr::normal(Expr::symbol(Symbol::new("System`List").unwrap()), vec![
             Expr::number(Number::Integer(1)),
         ]),
     );
     check_loopback_roundtrip(
         &env,
-        Expr::normal(Expr::symbol(parse_symbol("Global`MyHead").unwrap()), vec![
+        Expr::normal(Expr::symbol(Symbol::new("Global`MyHead").unwrap()), vec![
             Expr::number(Number::Integer(1)),
         ]),
     );
@@ -46,7 +45,7 @@ fn test_loopback_get_put_atoms() {
 
     {
         // Test the `WstpLink::get_symbol_ref()` method.
-        link.put_expr(&Expr::symbol(parse_symbol("System`Plot").unwrap()))
+        link.put_expr(&Expr::symbol(Symbol::new("System`Plot").unwrap()))
             .unwrap();
         let link_str: LinkStr = link.get_symbol_ref().unwrap();
         assert_eq!(link_str.to_str(), "System`Plot")

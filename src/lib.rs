@@ -640,7 +640,7 @@ fn get_expr(link: &mut WstpLink) -> Result<Expr, Error> {
             let symbol_link_str = link.get_symbol_ref()?;
             let symbol_str = symbol_link_str.to_str();
 
-            let symbol: Symbol = match wl_parse::parse_symbol(symbol_str) {
+            let symbol: Symbol = match Symbol::new(symbol_str) {
                 Some(sym) => sym,
                 None => {
                     return Err(Error::custom(format!(
