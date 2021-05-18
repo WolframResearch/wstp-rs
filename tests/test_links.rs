@@ -1,4 +1,4 @@
-use wstp::{Protocol, WstpLink};
+use wstp::{sys, Protocol, WstpLink};
 
 fn random_link_name() -> String {
     use rand::{distributions::Alphanumeric, Rng};
@@ -79,6 +79,24 @@ fn test_bug_intra_process_device_ignored_linkname() {
     let name: String = random_link_name();
     let listener = WstpLink::listen(&env, Protocol::IntraProcess, &name).unwrap();
     assert!(name != listener.link_name())
+}
+
+//======================================
+// SharedMemory
+//======================================
+
+/// Test the error code returned by the `SharedMemory` protocol implementation when sync
+/// objects with a particular name already exist.
+#[test]
+fn test_shared_memory_name_taken_error() {
+    const NAME: &str = "should-be-taken";
+
+    let env = wstp::initialize().unwrap();
+
+    let _a = WstpLink::listen(&env, Protocol::SharedMemory, NAME.into()).unwrap();
+    let b = WstpLink::listen(&env, Protocol::SharedMemory, NAME.into());
+
+    assert_eq!(b.unwrap_err().code().unwrap(), sys::MLENAMETAKEN as i32);
 }
 
 //======================================
