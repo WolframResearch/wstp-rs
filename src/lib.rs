@@ -3,6 +3,7 @@
 //! This crate provides a set of safe and ergonomic bindings to the WSTP library, used to
 //! transfer Wolfram Language expressions between programs.
 
+mod env;
 mod error;
 mod link_server;
 
@@ -30,18 +31,12 @@ pub use crate::link_server::LinkServer;
 #[deprecated(note = "use WstpLink")]
 pub type WSTPLink = WstpLink;
 
+// TODO: Make this function public from `wstp`?
+pub(crate) use env::stdenv;
+
 //======================================
 // Source
 //======================================
-
-/// A WSTP library environment.
-///
-/// See [`initialize()`].
-///
-/// *WSTP C API Documentation:* [`WSENV`](https://reference.wolfram.com/language/ref/c/WSENV.html).
-pub struct WstpEnv {
-    raw_env: sys::WSENV,
-}
 
 /// A WSTP link object.
 ///
@@ -101,43 +96,15 @@ pub enum Protocol {
 // Impls
 //======================================
 
-/// *WSTP C API Documentation:* [`WSInitialize()`](https://reference.wolfram.com/language/ref/c/WSInitialize.html)
-pub fn initialize() -> Result<WstpEnv, Error> {
-    let raw_env: sys::WSENV;
-
-    // TODO: Is this thread-safe?
-    //       Is it safe to call WSInitialize() multiple times in the same process?
-    unsafe {
-        raw_env = sys::WSInitialize(std::ptr::null_mut());
-    }
-
-    if raw_env.is_null() {
-        return Err(Error::custom(
-            // TODO: Is there an internal error string which could be included here?
-            format!("WSInitialize() failed"),
-        ));
-    }
-
-    Ok(WstpEnv { raw_env })
-}
-
-impl WstpEnv {
-    pub fn raw_env(&self) -> sys::WSENV {
-        let WstpEnv { raw_env } = *self;
-
-        raw_env
-    }
-}
-
 /// # Creating WSTP link objects
 impl WstpLink {
     /// Create a new Loopback type link.
     ///
     /// *WSTP C API Documentation:* [`WSLoopbackOpen()`](https://reference.wolfram.com/language/ref/c/WSLoopbackOpen.html)
-    pub fn new_loopback(env: &WstpEnv) -> Result<Self, Error> {
+    pub fn new_loopback() -> Result<Self, Error> {
         unsafe {
             let mut err: std::os::raw::c_int = sys::MLEOK as i32;
-            let raw_link = sys::WSLoopbackOpen(env.raw_env, &mut err);
+            let raw_link = sys::WSLoopbackOpen(stdenv()?.raw_env, &mut err);
 
             if raw_link.is_null() || err != (sys::MLEOK as i32) {
                 return Err(Error::from_code(err));
@@ -148,7 +115,7 @@ impl WstpLink {
     }
 
     /// Create a new named WSTP link using `protocol`.
-    pub fn listen(env: &WstpEnv, protocol: Protocol, name: &str) -> Result<Self, Error> {
+    pub fn listen(protocol: Protocol, name: &str) -> Result<Self, Error> {
         let protocol_string = protocol.to_string();
 
         let strings: &[&str] = &[
@@ -164,16 +131,15 @@ impl WstpLink {
             "MLDontInteract",
         ];
 
-        WstpLink::open_with_args(env, strings)
+        WstpLink::open_with_args(strings)
     }
 
     /// Connect to an existing named WSTP link.
-    pub fn connect(env: &WstpEnv, protocol: Protocol, name: &str) -> Result<Self, Error> {
-        WstpLink::connect_with_options(env, protocol, name, &[])
+    pub fn connect(protocol: Protocol, name: &str) -> Result<Self, Error> {
+        WstpLink::connect_with_options(protocol, name, &[])
     }
 
     pub fn connect_with_options(
-        env: &WstpEnv,
         protocol: Protocol,
         name: &str,
         options: &[&str],
@@ -196,7 +162,7 @@ impl WstpLink {
             strings.extend(options);
         }
 
-        WstpLink::open_with_args(env, &strings)
+        WstpLink::open_with_args(&strings)
     }
 
     /// *WSTP C API Documentation:* [`WSOpenArgcArgv()`](https://reference.wolfram.com/language/ref/c/WSOpenArgcArgv.html)
@@ -209,7 +175,7 @@ impl WstpLink {
     /// * [`WstpLink::connect()`]
     /// * [`WstpLink::launch()`]
     /// * [`WstpLink::parent_connect()`]
-    pub fn open_with_args(env: &WstpEnv, args: &[&str]) -> Result<Self, Error> {
+    pub fn open_with_args(args: &[&str]) -> Result<Self, Error> {
         // NOTE: Before returning, we must convert these back into CString's to
         //       deallocate them.
         let mut c_strings: Vec<*mut i8> = args
@@ -225,7 +191,7 @@ impl WstpLink {
 
         let raw_link = unsafe {
             sys::WSOpenArgcArgv(
-                env.raw_env(),
+                stdenv()?.raw_env,
                 i32::try_from(c_strings.len()).unwrap(),
                 c_strings.as_mut_ptr(),
                 &mut err,

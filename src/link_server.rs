@@ -2,7 +2,7 @@ use std::ffi::CStr;
 use std::os::raw::c_int;
 use std::str::FromStr;
 
-use crate::{sys, Error, WstpEnv, WstpLink};
+use crate::{sys, Error, WstpLink};
 
 /// Wrapper around the [`WSLinkServer`](https://reference.wolfram.com/language/ref/c/WSLinkServer.html)
 /// C type.
@@ -24,12 +24,12 @@ impl LinkServer {
     /// that functionality is desired.
     ///
     /// Use [`LinkServer::accept()`] to accept new connections to the link server.
-    pub fn new(env: &WstpEnv, port: u16) -> Result<Self, Error> {
+    pub fn new(port: u16) -> Result<Self, Error> {
         let mut err: std::os::raw::c_int = sys::MLEOK as i32;
 
         let raw_server: sys::WSLinkServer = unsafe {
             sys::WSNewLinkServerWithPort(
-                env.raw_env,
+                crate::stdenv()?.raw_env,
                 port,
                 std::ptr::null_mut(),
                 &mut err,
@@ -47,11 +47,7 @@ impl LinkServer {
 
     /// The callback is required to be [`Send`] so that it can be called from the link
     /// server's background thread, which accepts incoming connections.
-    pub fn new_with_callback<F>(
-        env: &WstpEnv,
-        port: u16,
-        callback: F,
-    ) -> Result<Self, Error>
+    pub fn new_with_callback<F>(port: u16, callback: F) -> Result<Self, Error>
     where
         F: FnMut(WstpLink) + Send + Sync,
     {
@@ -60,7 +56,7 @@ impl LinkServer {
 
         unsafe {
             raw_server = sys::WSNewLinkServerWithPort(
-                env.raw_env,
+                crate::stdenv()?.raw_env,
                 port,
                 Box::into_raw(Box::new(callback)) as *mut std::ffi::c_void,
                 &mut err,

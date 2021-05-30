@@ -22,8 +22,7 @@ fn test_link_server_using_accept() {
     //
 
     let thread = std::thread::spawn(move || {
-        let env = wstp::initialize().expect("failed to initialize WSTP");
-        let mut server = LinkServer::new(&env, PORT).unwrap();
+        let mut server = LinkServer::new(PORT).unwrap();
 
         assert_eq!(server.port(), Ok(PORT));
         assert!(server.interface().is_ok());
@@ -50,14 +49,11 @@ fn test_link_server_using_accept() {
     // Create new UUID-based TCPIP connection to the LinkServer connection.
     //
 
-    let env = wstp::initialize().expect("failed to initialize WSTP");
-
     // Create a connection to the LinkServer, and exchange some data.
-    let mut link =
-        WstpLink::connect_with_options(&env, Protocol::TCPIP, &PORT.to_string(), &[
-            "MLUseUUIDTCPIPConnection",
-        ])
-        .unwrap();
+    let mut link = WstpLink::connect_with_options(Protocol::TCPIP, &PORT.to_string(), &[
+        "MLUseUUIDTCPIPConnection",
+    ])
+    .unwrap();
 
     assert_eq!(link.get_i64(), Ok(0));
     link.put_str("Done.").unwrap();
@@ -71,9 +67,7 @@ fn test_link_server_using_accept() {
 fn test_link_server_using_callback() {
     let _guard = MUTEX.lock().unwrap();
 
-    let env = wstp::initialize().expect("failed to initialize WSTP");
-
-    let server = LinkServer::new_with_callback(&env, PORT, |link| {
+    let server = LinkServer::new_with_callback(PORT, |link| {
         println!("Got link: {:?}", link);
     })
     .unwrap();
@@ -87,10 +81,8 @@ fn test_link_server_using_callback() {
 fn test_name_taken_error() {
     let _guard = MUTEX.lock().unwrap();
 
-    let env = wstp::initialize().expect("failed to initialize WSTP");
-
-    let _a = LinkServer::new_with_callback(&env, PORT, |_| {}).unwrap();
-    let b = LinkServer::new_with_callback(&env, PORT, |_| {})
+    let _a = LinkServer::new_with_callback(PORT, |_| {}).unwrap();
+    let b = LinkServer::new_with_callback(PORT, |_| {})
         .expect_err("multiple link servers bound to same port??");
 
     assert_eq!(b.code(), Some(sys::MLENAMETAKEN as i32));

@@ -70,17 +70,14 @@ fn check_send_data_across_link(mut link_a: WstpLink, mut link_b: WstpLink) {
 fn test_intra_process_links() {
     // let name: String = dbg!(random_link_name());
 
-
-    let env = wstp::initialize().unwrap();
-
-    let listener = WstpLink::listen(&env, Protocol::IntraProcess, "").unwrap();
+    let listener = WstpLink::listen(Protocol::IntraProcess, "").unwrap();
 
     // FIXME: IntraProcess-mode links ignore the `-linkname` device parameter and instead
     //        generate their own random string to use as a name. So we have to create the
     //        listener device first and then ask for it's name.
     let name = listener.link_name();
 
-    let connector = WstpLink::connect(&env, Protocol::IntraProcess, &name).unwrap();
+    let connector = WstpLink::connect(Protocol::IntraProcess, &name).unwrap();
 
     check_send_data_across_link(listener, connector);
 }
@@ -90,10 +87,8 @@ fn test_intra_process_links() {
 ///        listener device first and then ask for it's name.
 #[test]
 fn test_bug_intra_process_device_ignored_linkname() {
-    let env = wstp::initialize().unwrap();
-
     let name: String = random_link_name();
-    let listener = WstpLink::listen(&env, Protocol::IntraProcess, &name).unwrap();
+    let listener = WstpLink::listen(Protocol::IntraProcess, &name).unwrap();
     assert!(name != listener.link_name())
 }
 
@@ -105,12 +100,10 @@ fn test_bug_intra_process_device_ignored_linkname() {
 /// objects with a particular name already exist.
 #[test]
 fn test_shared_memory_name_taken_error() {
-    const NAME: &str = "should-be-taken";
+    const NAME: &str = "should-be-taken-2";
 
-    let env = wstp::initialize().unwrap();
-
-    let _a = WstpLink::listen(&env, Protocol::SharedMemory, NAME.into()).unwrap();
-    let b = WstpLink::listen(&env, Protocol::SharedMemory, NAME.into());
+    let _a = WstpLink::listen(Protocol::SharedMemory, NAME.into()).unwrap();
+    let b = WstpLink::listen(Protocol::SharedMemory, NAME.into());
 
     assert_eq!(b.unwrap_err().code().unwrap(), sys::MLENAMETAKEN as i32);
 }
@@ -121,10 +114,8 @@ fn test_shared_memory_name_taken_error() {
 
 #[test]
 fn test_tcpip_links() {
-    let env = wstp::initialize().unwrap();
-
-    let listener = WstpLink::listen(&env, Protocol::TCPIP, "8080").unwrap();
-    let connector = WstpLink::connect(&env, Protocol::TCPIP, "8080").unwrap();
+    let listener = WstpLink::listen(Protocol::TCPIP, "8080").unwrap();
+    let connector = WstpLink::connect(Protocol::TCPIP, "8080").unwrap();
 
     check_send_data_across_link(listener, connector);
 }
