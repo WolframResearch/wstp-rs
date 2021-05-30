@@ -25,6 +25,15 @@ fn check_send_data_across_link(mut link_a: WstpLink, mut link_b: WstpLink) {
         let got = link_a.get_f64().unwrap();
         assert_eq!(got, 3.1415);
 
+        {
+            link_a.put_raw_type(i32::from(sys::WSTKFUNC)).unwrap();
+            link_a.put_arg_count(2).unwrap();
+            link_a.put_symbol("Sin").unwrap();
+            link_a.put_f64(1.0).unwrap();
+
+            link_a.flush().unwrap()
+        }
+
         link_a
     });
 
@@ -38,6 +47,13 @@ fn check_send_data_across_link(mut link_a: WstpLink, mut link_b: WstpLink) {
 
         link_b.put_f64(3.1415).unwrap();
         link_b.flush().unwrap();
+
+        {
+            assert_eq!(link_b.get_raw_type(), Ok(i32::from(sys::WSTKFUNC)));
+            assert_eq!(link_b.get_arg_count(), Ok(2));
+            assert!(link_b.get_symbol_ref().unwrap().to_str() == "Sin");
+            assert_eq!(link_b.get_f64(), Ok(1.0))
+        }
 
         link_b
     });

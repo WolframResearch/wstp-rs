@@ -12,10 +12,9 @@ use std::fmt::{self, Display};
 
 use wl_expr::{Expr, ExprKind, Normal, Number, Symbol};
 use wstp_sys::{
-    WSErrorMessage, WSGetArgCount, WSGetInteger64, WSGetReal64, WSGetType,
-    WSGetUTF8String, WSPutArgCount, WSPutInteger64, WSPutReal64, WSPutType,
-    WSPutUTF8String, WSPutUTF8Symbol, WSReady, WSReleaseErrorMessage, WSReleaseString,
-    WSReleaseSymbol, WSLINK,
+    WSErrorMessage, WSGetArgCount, WSGetInteger64, WSGetReal64, WSGetUTF8String,
+    WSPutArgCount, WSPutInteger64, WSPutReal64, WSPutUTF8String, WSPutUTF8Symbol,
+    WSReady, WSReleaseErrorMessage, WSReleaseString, WSReleaseSymbol, WSLINK,
 };
 
 //-----------------------------------
@@ -373,17 +372,8 @@ impl WstpLink {
     pub fn put_expr(&mut self, expr: &Expr) -> Result<(), Error> {
         match expr.kind() {
             ExprKind::Normal(Normal { head, contents }) => {
-                let contents_len =
-                    i32::try_from(contents.len()).expect("usize overflows i32");
-
-                unsafe {
-                    if WSPutType(self.raw_link, i32::from(sys::WSTKFUNC)) == 0 {
-                        return Err(self.error_or_unknown());
-                    }
-                    if WSPutArgCount(self.raw_link, contents_len) == 0 {
-                        return Err(self.error_or_unknown());
-                    }
-                }
+                self.put_raw_type(i32::from(sys::WSTKFUNC))?;
+                self.put_arg_count(contents.len())?;
 
                 let _: () = self.put_expr(&*head)?;
 
@@ -403,6 +393,34 @@ impl WstpLink {
             ExprKind::Number(Number::Real(real)) => {
                 self.put_f64(**real)?;
             },
+        }
+
+        Ok(())
+    }
+
+    /// TODO: Augment this function with a `get_type()` method which returns a
+    ///       (non-exhaustive) enum value.
+    ///
+    /// If the returned type is [`WSTKERR`][sys::WSTKERR], an error is returned.
+    ///
+    /// *WSTP C API Documentation:* [`WSGetType()`](https://reference.wolfram.com/language/ref/c/WSGetType.html)
+    pub fn get_raw_type(&mut self) -> Result<i32, Error> {
+        let type_ = unsafe { sys::WSGetType(self.raw_link) };
+
+        if type_ == sys::WSTKERR as i32 {
+            return Err(self.error_or_unknown());
+        }
+
+        Ok(type_)
+    }
+
+    /// TODO: Augment this function with a `put_type()` method which takes a
+    ///       (non-exhaustive) enum value.
+    ///
+    /// *WSTP C API Documentation:* [`WSPutType()`](https://reference.wolfram.com/language/ref/c/WSPutType.html)
+    pub fn put_raw_type(&mut self, type_: i32) -> Result<(), Error> {
+        if unsafe { sys::WSPutType(self.raw_link, type_) } == 0 {
+            return Err(self.error_or_unknown());
         }
 
         Ok(())
@@ -499,6 +517,23 @@ impl WstpLink {
         })
     }
 
+    /// *WSTP C API Documentation:* [`WSGetArgCount()`](https://reference.wolfram.com/language/ref/c/WSGetArgCount.html)
+    pub fn get_arg_count(&mut self) -> Result<usize, Error> {
+        let mut arg_count = 0;
+
+        if unsafe { WSGetArgCount(self.raw_link, &mut arg_count) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        let arg_count = usize::try_from(arg_count)
+            // This really shouldn't happen on any modern 32/64 bit OS. If this
+            // condition *is* reached, it's more likely going to be do to an ABI or
+            // numeric environment handling issue.
+            .expect("WSTKFUNC argument count could not be converted to usize");
+
+        Ok(arg_count)
+    }
+
     /// *WSTP C API Documentation:* [`WSPutInteger64()`](https://reference.wolfram.com/language/ref/c/WSPutInteger64.html)
     pub fn put_i64(&mut self, value: i64) -> Result<(), Error> {
         if unsafe { WSPutInteger64(self.raw_link, value) } == 0 {
@@ -548,6 +583,22 @@ impl WstpLink {
         let ptr = c_string.as_ptr() as *const u8;
 
         if unsafe { WSPutUTF8Symbol(self.raw_link, ptr, len) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        Ok(())
+    }
+
+    /// *WSTP C API Documentation:* [`WSPutArgCount()`](https://reference.wolfram.com/language/ref/c/WSPutArgCount.html)
+    pub fn put_arg_count(&mut self, count: usize) -> Result<(), Error> {
+        let count: i32 = i32::try_from(count).map_err(|err| {
+            Error::custom(format!(
+                "put_arg_count: Error converting usize to i32: {}",
+                err
+            ))
+        })?;
+
+        if unsafe { WSPutArgCount(self.raw_link, count) } == 0 {
             return Err(self.error_or_unknown());
         }
 
@@ -613,13 +664,9 @@ impl<'link> Drop for LinkStr<'link> {
 //======================================
 
 fn get_expr(link: &mut WstpLink) -> Result<Expr, Error> {
-    use wstp_sys::{WSTKERR, WSTKFUNC, WSTKINT, WSTKREAL, WSTKSTR, WSTKSYM};
+    use wstp_sys::{WSTKFUNC, WSTKINT, WSTKREAL, WSTKSTR, WSTKSYM};
 
-    let type_: i32 = unsafe { WSGetType(link.raw_link) };
-
-    if type_ == WSTKERR as i32 {
-        return Err(link.error_or_unknown());
-    }
+    let type_: i32 = link.get_raw_type()?;
 
     let expr: Expr = match type_ as u8 {
         WSTKINT => Expr::number(Number::Integer(link.get_i64()?)),
@@ -653,17 +700,7 @@ fn get_expr(link: &mut WstpLink) -> Result<Expr, Error> {
             Expr::symbol(symbol)
         },
         WSTKFUNC => {
-            let mut arg_count = 0;
-
-            if unsafe { WSGetArgCount(link.raw_link, &mut arg_count) } == 0 {
-                return Err(link.error_or_unknown());
-            }
-
-            let arg_count = usize::try_from(arg_count)
-                // This really shouldn't happen on any modern 32/64 bit OS. If this
-                // condition *is* reached, it's more likely going to be do to an ABI or
-                // numeric environment handling issue.
-                .expect("WSTKFUNC argument count could not be converted to usize");
+            let arg_count = link.get_arg_count()?;
 
             let head = link.get_expr()?;
 
