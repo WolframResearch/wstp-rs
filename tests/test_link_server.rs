@@ -45,6 +45,9 @@ fn test_link_server_using_accept() {
         assert!(after.duration_since(before) < Duration::from_millis(220));
     });
 
+    // Give the link server time to start listening for connections.
+    std::thread::sleep(std::time::Duration::from_millis(100));
+
     //
     // Create new UUID-based TCPIP connection to the LinkServer connection.
     //
