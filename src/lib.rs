@@ -329,6 +329,37 @@ impl WstpLink {
         Ok(())
     }
 
+    /// *WSTP C API Documentation:* [`WSGetNext()`](https://reference.wolfram.com/language/ref/c/WSGetNext.html)
+    pub fn raw_get_next(&mut self) -> Result<i32, Error> {
+        let type_ = unsafe { sys::WSGetNext(self.raw_link) };
+
+        if type_ == sys::WSTKERR as i32 {
+            return Err(self.error_or_unknown());
+        }
+
+        Ok(type_)
+    }
+
+    /// *WSTP C API Documentation:* [`WSNextPacket()`](https://reference.wolfram.com/language/ref/c/WSNextPacket.html)
+    pub fn raw_next_packet(&mut self) -> Result<i32, Error> {
+        let type_ = unsafe { sys::WSNextPacket(self.raw_link) };
+
+        if type_ == sys::ILLEGALPKT as i32 {
+            return Err(self.error_or_unknown());
+        }
+
+        Ok(type_)
+    }
+
+    /// *WSTP C API Documentation:* [`WSNewPacket()`](https://reference.wolfram.com/language/ref/c/WSNewPacket.html)
+    pub fn raw_new_packet(&mut self) -> Result<(), Error> {
+        if unsafe { sys::WSNextPacket(self.raw_link) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        Ok(())
+    }
+
     /// Read an expression off of this link.
     pub fn get_expr(&mut self) -> Result<Expr, Error> {
         get_expr(self)
