@@ -93,8 +93,6 @@ impl Drop for WstpEnv {
     fn drop(&mut self) {
         let WstpEnv { raw_env } = *self;
 
-        println!("DEINITIALIZING WstpEnv");
-
         unsafe {
             sys::WSDeinitialize(raw_env);
         }
