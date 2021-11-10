@@ -352,8 +352,8 @@ impl WstpLink {
     }
 
     /// *WSTP C API Documentation:* [`WSNewPacket()`](https://reference.wolfram.com/language/ref/c/WSNewPacket.html)
-    pub fn raw_new_packet(&mut self) -> Result<(), Error> {
-        if unsafe { sys::WSNextPacket(self.raw_link) } == 0 {
+    pub fn new_packet(&mut self) -> Result<(), Error> {
+        if unsafe { sys::WSNewPacket(self.raw_link) } == 0 {
             return Err(self.error_or_unknown());
         }
 
