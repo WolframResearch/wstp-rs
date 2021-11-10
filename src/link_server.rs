@@ -150,7 +150,7 @@ impl LinkServer {
         // Note: The link server is closed when `self` is dropped.
     }
 
-    /// Accept a new incomming connection to this link server.
+    /// Accept a new incoming connection to this link server.
     ///
     /// This method blocks the current thread indefinitely until a connection is made to
     /// the port this link server is bound to.
