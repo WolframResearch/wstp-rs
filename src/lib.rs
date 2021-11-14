@@ -168,8 +168,8 @@ impl WstpLink {
     /// *WSTP C API Documentation:* [`WSOpenArgcArgv()`](https://reference.wolfram.com/language/ref/c/WSOpenArgcArgv.html)
     ///
     /// This function can be used to create a `WstpLink` of any protocol and mode. Prefer
-    /// to use one of constructor methods listed below when you know the type of link to
-    /// be created.
+    /// to use one of the constructor methods listed below when you know the type of link
+    /// to be created.
     ///
     /// * [`WstpLink::listen()`]
     /// * [`WstpLink::connect()`]
