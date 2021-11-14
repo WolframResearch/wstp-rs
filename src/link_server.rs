@@ -82,7 +82,13 @@ impl LinkServer {
     /// Returns the TCPIP port number used by this link server.
     ///
     /// *WSTP C API Documentation:* [WSPortFromLinkServer](https://reference.wolfram.com/language/ref/c/WSPortFromLinkServer.html)
-    pub fn port(&self) -> Result<u16, Error> {
+    pub fn port(&self) -> u16 {
+        self.try_port()
+            .unwrap_or_else(|err| panic!("WSPortFromLinkServer failed: {}", err))
+    }
+
+    /// Fallible variant of [LinkServer::port()].
+    pub fn try_port(&self) -> Result<u16, Error> {
         let mut err: std::os::raw::c_int = sys::MLEOK as i32;
 
         let port: u16 =
@@ -98,7 +104,13 @@ impl LinkServer {
     /// Returns the IP address of the interface used by this link server.
     ///
     /// *WSTP C API Documentation:* [WSInterfaceFromLinkServer](https://reference.wolfram.com/language/ref/c/WSInterfaceFromLinkServer.html)
-    pub fn interface(&self) -> Result<std::net::IpAddr, Error> {
+    pub fn interface(&self) -> std::net::IpAddr {
+        self.try_interface()
+            .unwrap_or_else(|err| panic!("WSInterfaceFromLinkServer failed: {}", err))
+    }
+
+    /// Fallible variant of [LinkServer::interface()].
+    pub fn try_interface(&self) -> Result<std::net::IpAddr, Error> {
         let mut err: c_int = sys::MLEOK as i32;
 
         let iface_cstr =
