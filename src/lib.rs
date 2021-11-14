@@ -316,6 +316,17 @@ impl WstpLink {
             .unwrap_or_else(|| Error::custom("unknown error occurred on WSLINK".into()))
     }
 
+    /// Clear errors on this link.
+    ///
+    /// *WSTP C API Documentation:* [`WSClearError()`](https://reference.wolfram.com/language/ref/c/WSClearError.html)
+    pub fn clear_error(&mut self) {
+        let WstpLink { raw_link } = *self;
+
+        unsafe {
+            sys::WSClearError(raw_link);
+        }
+    }
+
     /// *WSTP C API Documentation:* [`WSLINK`](https://reference.wolfram.com/language/ref/c/WSLINK.html)
     pub unsafe fn raw_link(&self) -> WSLINK {
         let WstpLink { raw_link } = *self;
