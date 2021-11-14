@@ -1,4 +1,5 @@
 use std::ffi::CStr;
+use std::fmt;
 use std::os::raw::c_int;
 use std::str::FromStr;
 
@@ -11,7 +12,6 @@ use crate::{sys, Error, WstpLink};
 ///
 /// **TODO:** Document the two different methods for accepting new `WstpLink` connections
 /// from this type (waiting and an async callback).
-#[derive(Debug)]
 pub struct LinkServer {
     raw_link_server: sys::WSLinkServer,
 }
@@ -146,8 +146,8 @@ impl LinkServer {
         match std::net::IpAddr::from_str(iface.as_str()) {
             Ok(ip) => Ok(ip),
             Err(err) => Err(Error::custom(format!(
-                "unable to parse LinkServer interface as IpAddr: {}",
-                err
+                "unable to parse LinkServer interface ({}) as IpAddr: {}",
+                iface, err
             ))),
         }
     }
@@ -224,5 +224,16 @@ impl Drop for LinkServer {
         unsafe {
             sys::WSShutdownLinkServer(raw_link_server);
         }
+    }
+}
+
+impl fmt::Debug for LinkServer {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "LinkServer(Port: {}, Interface: {})",
+            self.port(),
+            self.interface()
+        )
     }
 }
