@@ -24,8 +24,8 @@ fn test_link_server_using_accept() {
     let thread = std::thread::spawn(move || {
         let mut server = LinkServer::new(PORT).unwrap();
 
-        assert_eq!(server.port(), Ok(PORT));
-        assert!(server.interface().is_ok());
+        assert_eq!(server.try_port(), Ok(PORT));
+        assert!(server.try_interface().is_ok());
 
         let mut conn: WstpLink = server
             .accept()
@@ -78,8 +78,8 @@ fn test_link_server_using_callback() {
     .unwrap();
 
     // Test that the port and interface getters work as expected.
-    assert_eq!(server.port(), Ok(PORT));
-    assert!(server.interface().is_ok());
+    assert_eq!(server.try_port(), Ok(PORT));
+    assert!(server.try_interface().is_ok());
 }
 
 #[test]
