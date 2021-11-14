@@ -259,6 +259,13 @@ impl WstpLink {
         unsafe { WSReady(raw_link) != 0 }
     }
 
+    /// *WSTP C API Documentation:* [`WSIsLinkLoopback()`](https://reference.wolfram.com/language/ref/c/WSIsLinkLoopback.html)
+    pub fn is_loopback(&self) -> bool {
+        let WstpLink { raw_link } = *self;
+
+        1 == unsafe { sys::WSIsLinkLoopback(raw_link) }
+    }
+
     /// Returns an [`Error`] describing the last error to occur on this link.
     ///
     /// # Examples

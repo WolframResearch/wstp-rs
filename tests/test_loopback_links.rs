@@ -1,5 +1,5 @@
 use wl_expr::{Expr, Number, Symbol};
-use wstp::{LinkStr, WstpLink};
+use wstp::{LinkStr, Protocol, WstpLink};
 
 fn check_loopback_roundtrip(expr: Expr) {
     let mut link = WstpLink::new_loopback().expect("failed to create Loopback link");
@@ -42,4 +42,13 @@ fn test_loopback_get_put_atoms() {
         let link_str: LinkStr = link.get_symbol_ref().unwrap();
         assert_eq!(link_str.to_str(), "System`Plot")
     }
+}
+
+#[test]
+fn test_is_loopback() {
+    let link = WstpLink::new_loopback().unwrap();
+    assert!(link.is_loopback());
+
+    let link = WstpLink::listen(Protocol::IntraProcess, "name-test").unwrap();
+    assert!(!link.is_loopback());
 }
