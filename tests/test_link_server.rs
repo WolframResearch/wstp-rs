@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use wstp::{sys, LinkServer, Protocol, WstpLink};
+use wstp::{sys, Link, LinkServer, Protocol};
 
 const PORT: u16 = 11235;
 
@@ -27,7 +27,7 @@ fn test_link_server_using_accept() {
         assert_eq!(server.try_port(), Ok(PORT));
         assert!(server.try_interface().is_ok());
 
-        let mut conn: WstpLink = server
+        let mut conn: Link = server
             .accept()
             .expect("failed to wait for link server connection");
 
@@ -53,7 +53,7 @@ fn test_link_server_using_accept() {
     //
 
     // Create a connection to the LinkServer, and exchange some data.
-    let mut link = WstpLink::connect_with_options(
+    let mut link = Link::connect_with_options(
         Protocol::TCPIP,
         &PORT.to_string(),
         &["MLUseUUIDTCPIPConnection"],

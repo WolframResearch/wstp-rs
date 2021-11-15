@@ -3,14 +3,14 @@ use std::fmt;
 use std::os::raw::c_int;
 use std::str::FromStr;
 
-use crate::{sys, Error, WstpLink};
+use crate::{sys, Error, Link};
 
 /// Wrapper around the [`WSLinkServer`](https://reference.wolfram.com/language/ref/c/WSLinkServer.html)
 /// C type.
 ///
 /// # Usage
 ///
-/// **TODO:** Document the two different methods for accepting new `WstpLink` connections
+/// **TODO:** Document the two different methods for accepting new [`Link`] connections
 /// from this type (waiting and an async callback).
 pub struct LinkServer {
     raw_link_server: sys::WSLinkServer,
@@ -49,7 +49,7 @@ impl LinkServer {
     /// server's background thread, which accepts incoming connections.
     pub fn new_with_callback<F>(port: u16, callback: F) -> Result<Self, Error>
     where
-        F: FnMut(WstpLink) + Send + Sync,
+        F: FnMut(Link) + Send + Sync,
     {
         let raw_server: sys::WSLinkServer;
         let mut err: std::os::raw::c_int = sys::MLEOK as i32;
@@ -171,7 +171,7 @@ impl LinkServer {
     /// connections asyncronously via a callback function.
     ///
     /// *WSTP C API Documentation:* [`WSWaitForNewLinkFromLinkServer`](https://reference.wolfram.com/language/ref/c/WSWaitForNewLinkFromLinkServer.html)
-    pub fn accept(&mut self) -> Result<WstpLink, Error> {
+    pub fn accept(&mut self) -> Result<Link, Error> {
         let mut err: c_int = sys::MLEOK as i32;
 
         let raw_link = unsafe {
@@ -182,7 +182,7 @@ impl LinkServer {
             return Err(Error::from_code(err));
         }
 
-        let link = unsafe { WstpLink::unchecked_new(raw_link) };
+        let link = unsafe { Link::unchecked_new(raw_link) };
 
         Ok(link)
     }
@@ -194,14 +194,14 @@ impl LinkServer {
     }
 }
 
-extern "C" fn callback_trampoline<F: FnMut(WstpLink) + Send + Sync>(
+extern "C" fn callback_trampoline<F: FnMut(Link) + Send + Sync>(
     raw_link_server: sys::WSLinkServer,
     raw_link: sys::WSLINK,
 ) {
     let mut err: std::os::raw::c_int = sys::MLEOK as i32;
 
     let user_closure: &mut F;
-    let link: WstpLink;
+    let link: Link;
 
     unsafe {
         let raw_user_closure: *mut std::ffi::c_void =
@@ -211,7 +211,7 @@ extern "C" fn callback_trampoline<F: FnMut(WstpLink) + Send + Sync>(
 
         // SAFETY: This is safe because `raw_link` is an entirely new link which we have
         //         ownership over.
-        link = WstpLink::unchecked_new(raw_link);
+        link = Link::unchecked_new(raw_link);
     }
 
     // Call the closure provided by the user

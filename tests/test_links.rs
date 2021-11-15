@@ -1,4 +1,4 @@
-use wstp::{sys, Protocol, WstpLink};
+use wstp::{sys, Link, Protocol};
 
 fn random_link_name() -> String {
     use rand::{distributions::Alphanumeric, Rng};
@@ -13,7 +13,7 @@ fn random_link_name() -> String {
 // Helper method to check that data can successfully be sent from `link_a` to `link_b`.
 //
 // This tests reading and writing from both ends of the link.
-fn check_send_data_across_link(mut link_a: WstpLink, mut link_b: WstpLink) {
+fn check_send_data_across_link(mut link_a: Link, mut link_b: Link) {
     let thread_a = std::thread::spawn(move || {
         link_a.activate().expect("failed to activate Listener side");
 
@@ -70,14 +70,14 @@ fn check_send_data_across_link(mut link_a: WstpLink, mut link_b: WstpLink) {
 fn test_intra_process_links() {
     // let name: String = dbg!(random_link_name());
 
-    let listener = WstpLink::listen(Protocol::IntraProcess, "").unwrap();
+    let listener = Link::listen(Protocol::IntraProcess, "").unwrap();
 
     // FIXME: IntraProcess-mode links ignore the `-linkname` device parameter and instead
     //        generate their own random string to use as a name. So we have to create the
     //        listener device first and then ask for it's name.
     let name = listener.link_name();
 
-    let connector = WstpLink::connect(Protocol::IntraProcess, &name).unwrap();
+    let connector = Link::connect(Protocol::IntraProcess, &name).unwrap();
 
     check_send_data_across_link(listener, connector);
 }
@@ -88,7 +88,7 @@ fn test_intra_process_links() {
 #[test]
 fn test_bug_intra_process_device_ignored_linkname() {
     let name: String = random_link_name();
-    let listener = WstpLink::listen(Protocol::IntraProcess, &name).unwrap();
+    let listener = Link::listen(Protocol::IntraProcess, &name).unwrap();
     assert!(name != listener.link_name())
 }
 
@@ -102,8 +102,8 @@ fn test_bug_intra_process_device_ignored_linkname() {
 fn test_shared_memory_name_taken_error() {
     const NAME: &str = "should-be-taken-2";
 
-    let _a = WstpLink::listen(Protocol::SharedMemory, NAME.into()).unwrap();
-    let b = WstpLink::listen(Protocol::SharedMemory, NAME.into());
+    let _a = Link::listen(Protocol::SharedMemory, NAME.into()).unwrap();
+    let b = Link::listen(Protocol::SharedMemory, NAME.into());
 
     assert_eq!(b.unwrap_err().code().unwrap(), sys::MLENAMETAKEN as i32);
 }
@@ -114,8 +114,8 @@ fn test_shared_memory_name_taken_error() {
 
 #[test]
 fn test_tcpip_links() {
-    let listener = WstpLink::listen(Protocol::TCPIP, "8080").unwrap();
-    let connector = WstpLink::connect(Protocol::TCPIP, "8080").unwrap();
+    let listener = Link::listen(Protocol::TCPIP, "8080").unwrap();
+    let connector = Link::connect(Protocol::TCPIP, "8080").unwrap();
 
     check_send_data_across_link(listener, connector);
 }
@@ -126,12 +126,12 @@ fn test_tcpip_links() {
 
 #[test]
 fn test_link_wait_with_callback() {
-    let mut listener = WstpLink::listen(Protocol::IntraProcess, "").unwrap();
+    let mut listener = Link::listen(Protocol::IntraProcess, "").unwrap();
 
     let mut counter = 0;
 
     listener
-        .wait_with_callback(|_: &mut WstpLink| {
+        .wait_with_callback(|_: &mut Link| {
             counter += 1;
 
             if counter < 5 {
@@ -148,12 +148,12 @@ fn test_link_wait_with_callback() {
 /// Test that `wait_with_callback()` will stop waiting if a panic occurs.
 #[test]
 fn test_link_wait_with_callback_panic() {
-    let mut listener = WstpLink::listen(Protocol::IntraProcess, "").unwrap();
+    let mut listener = Link::listen(Protocol::IntraProcess, "").unwrap();
 
     let mut counter = 0;
 
     listener
-        .wait_with_callback(|_: &mut WstpLink| {
+        .wait_with_callback(|_: &mut Link| {
             counter += 1;
 
             panic!("STOP");
@@ -167,7 +167,7 @@ fn test_link_wait_with_callback_panic() {
 fn test_link_wait_with_callback_drops_closure() {
     use std::sync::Arc;
 
-    let mut listener = WstpLink::listen(Protocol::IntraProcess, "").unwrap();
+    let mut listener = Link::listen(Protocol::IntraProcess, "").unwrap();
 
     let data = Arc::new(());
     let inner: Arc<()> = data.clone();
@@ -178,7 +178,7 @@ fn test_link_wait_with_callback_drops_closure() {
     // allows us to indirectly verify that `closure` itself is dropped, even if it panics
     // during the wait. (At a lower level, this is testing an implementation detail of
     // wait_with_callback(): that Box::from_raw(boxed_closure_ptr) is called as expected.)
-    let closure = move |_: &mut WstpLink| {
+    let closure = move |_: &mut Link| {
         assert_eq!(Arc::strong_count(&inner), 2);
 
         panic!()
@@ -191,12 +191,12 @@ fn test_link_wait_with_callback_drops_closure() {
 
 #[test]
 fn test_link_wait_with_callback_nested() {
-    let mut listener = WstpLink::listen(Protocol::IntraProcess, "").unwrap();
+    let mut listener = Link::listen(Protocol::IntraProcess, "").unwrap();
 
     let mut failed = false;
 
     listener
-        .wait_with_callback(|this: &mut WstpLink| {
+        .wait_with_callback(|this: &mut Link| {
             // We're expecting this to panic.
             let _ = this.wait_with_callback(|_| panic!());
 

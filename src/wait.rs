@@ -1,6 +1,6 @@
 use crate::{
     sys::{self, WSLINK},
-    Error, WstpLink,
+    Error, Link,
 };
 
 use std::collections::HashMap;
@@ -11,7 +11,7 @@ struct ForceSend<T>(T);
 unsafe impl<T> Send for ForceSend<T> {}
 
 lazy_static::lazy_static! {
-    /// Hash map used to store the closure passed to [`WstpLink::wait_with_callback()`].
+    /// Hash map used to store the closure passed to [`Link::wait_with_callback()`].
     ///
     /// This is a workaround for the fact that [WSWaitForLinkActivityWithCallback][sys::WSWaitForLinkActivityWithCallback]
     /// takes a function pointer as an argument, but provides no way to provide a piece of
@@ -21,10 +21,10 @@ lazy_static::lazy_static! {
     static ref WAIT_CALLBACKS: Mutex<ForceSend<HashMap<WSLINK, *mut std::ffi::c_void>>> = Mutex::new(ForceSend(HashMap::new()));
 }
 
-impl WstpLink {
+impl Link {
     /// *WSTP C API Documentation:* [`WSWaitForLinkActivity`](https://reference.wolfram.com/language/ref/c/WSWaitForLinkActivity.html)
     pub fn wait(&mut self) -> Result<(), Error> {
-        let WstpLink { raw_link } = *self;
+        let Link { raw_link } = *self;
 
         let result: i32 = unsafe { sys::WSWaitForLinkActivity(raw_link) };
 
@@ -46,12 +46,14 @@ impl WstpLink {
     /// # Example
     ///
     /// ```
-    /// let mut listener = WstpLink::listen(Protocol::IntraProcess, "").unwrap();
+    /// use wstp::{Link, Protocol};
+    ///
+    /// let mut listener = Link::listen(Protocol::IntraProcess, "").unwrap();
     ///
     /// let mut counter = 0;
     ///
     /// listener
-    ///     .wait_with_callback(|_: &mut WstpLink| {
+    ///     .wait_with_callback(|_: &mut Link| {
     ///         use std::ops::ControlFlow;
     ///
     ///         counter += 1;
@@ -68,16 +70,16 @@ impl WstpLink {
     /// # User data fields
     ///
     /// This function will temporarily replace any user data values (set using
-    /// [WstpLink::set_user_data]) which are associated with the current link. The user
-    /// data values on the `&mut WstpLink` parameter inside the callback are
+    /// [Link::set_user_data]) which are associated with the current link. The user
+    /// data values on the `&mut Link` parameter inside the callback are
     /// an implementation detail of this function and must not be modified.
     ///
     /// *WSTP C API Documentation:* [`WSWaitForLinkActivityWithCallback`](https://reference.wolfram.com/language/ref/c/WSWaitForLinkActivityWithCallback.html)
     pub fn wait_with_callback<F>(&mut self, callback: F) -> Result<bool, Error>
     where
-        F: FnMut(&mut WstpLink) -> std::ops::ControlFlow<()> + Send + Sync,
+        F: FnMut(&mut Link) -> std::ops::ControlFlow<()> + Send + Sync,
     {
-        let WstpLink { raw_link } = *self;
+        let Link { raw_link } = *self;
 
         let result: i32;
 
@@ -136,7 +138,7 @@ unsafe extern "C" fn link_wait_callback_trampoline<F>(
     _unused_void: *mut std::ffi::c_void,
 ) -> i32
 where
-    F: FnMut(&mut WstpLink) -> std::ops::ControlFlow<()> + Send + Sync,
+    F: FnMut(&mut Link) -> std::ops::ControlFlow<()> + Send + Sync,
 {
     // Catch any panics which result from `expect()` or `user_closure()` to prevent
     // unwinding over C stack frames.
@@ -153,7 +155,7 @@ where
                 .expect("link has no associated wait closure in WAIT_CALLBACKS")
         };
 
-        let link: &mut WstpLink = WstpLink::unchecked_ref_cast_mut(&mut raw_link);
+        let link: &mut Link = Link::unchecked_ref_cast_mut(&mut raw_link);
 
         let user_closure: &mut F = (raw_user_closure as *mut F)
             .as_mut()
