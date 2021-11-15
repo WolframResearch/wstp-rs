@@ -369,6 +369,28 @@ impl WstpLink {
         let WstpLink { raw_link } = *self;
         raw_link
     }
+
+    /// *WSTP C API Documentation:* [`WSUserData`](https://reference.wolfram.com/language/ref/c/WSUserData.html)
+    pub unsafe fn user_data(&self) -> (*mut std::ffi::c_void, sys::WSUserFunction) {
+        let WstpLink { raw_link } = *self;
+
+        let mut user_func: sys::WSUserFunction = None;
+
+        let data_obj: *mut std::ffi::c_void = sys::WSUserData(raw_link, &mut user_func);
+
+        (data_obj, user_func)
+    }
+
+    /// *WSTP C API Documentation:* [`WSSetUserData`](https://reference.wolfram.com/language/ref/c/WSSetUserData.html)
+    pub unsafe fn set_user_data(
+        &mut self,
+        data_obj: *mut std::ffi::c_void,
+        user_func: sys::WSUserFunction,
+    ) {
+        let WstpLink { raw_link } = *self;
+
+        sys::WSSetUserData(raw_link, data_obj, user_func);
+    }
 }
 
 /// # Reading and writing expressions
