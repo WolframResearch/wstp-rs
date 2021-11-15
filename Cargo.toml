@@ -14,6 +14,7 @@ wl-expr = { package = "wl-expr-core", git = "ssh://git@stash.wolfram.com:7999/~c
 wl-parse = { git = "ssh://git@stash.wolfram.com:7999/~connorg/wl-parse.git" }
 
 lazy_static = "1.4.0"
+ref-cast = "1.0.6"
 
 [dev-dependencies]
 rand = "0.8.3"
