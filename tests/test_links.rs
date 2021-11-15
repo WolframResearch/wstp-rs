@@ -119,3 +119,91 @@ fn test_tcpip_links() {
 
     check_send_data_across_link(listener, connector);
 }
+
+//======================================
+// Misc.
+//======================================
+
+#[test]
+fn test_link_wait_with_callback() {
+    let mut listener = WstpLink::listen(Protocol::IntraProcess, "").unwrap();
+
+    let mut counter = 0;
+
+    listener
+        .wait_with_callback(|_: &mut WstpLink| {
+            counter += 1;
+
+            if counter < 5 {
+                std::ops::ControlFlow::Continue(())
+            } else {
+                std::ops::ControlFlow::Break(())
+            }
+        })
+        .unwrap();
+
+    assert_eq!(counter, 5);
+}
+
+/// Test that `wait_with_callback()` will stop waiting if a panic occurs.
+#[test]
+fn test_link_wait_with_callback_panic() {
+    let mut listener = WstpLink::listen(Protocol::IntraProcess, "").unwrap();
+
+    let mut counter = 0;
+
+    listener
+        .wait_with_callback(|_: &mut WstpLink| {
+            counter += 1;
+
+            panic!("STOP");
+        })
+        .unwrap();
+
+    assert_eq!(counter, 1);
+}
+
+#[test]
+fn test_link_wait_with_callback_drops_closure() {
+    use std::sync::Arc;
+
+    let mut listener = WstpLink::listen(Protocol::IntraProcess, "").unwrap();
+
+    let data = Arc::new(());
+    let inner: Arc<()> = data.clone();
+
+    assert_eq!(Arc::strong_count(&data), 2);
+
+    // `inner` is moved into `closure`. `inner` will only be dropped if `closure` is. This
+    // allows us to indirectly verify that `closure` itself is dropped, even if it panics
+    // during the wait. (At a lower level, this is testing an implementation detail of
+    // wait_with_callback(): that Box::from_raw(boxed_closure_ptr) is called as expected.)
+    let closure = move |_: &mut WstpLink| {
+        assert_eq!(Arc::strong_count(&inner), 2);
+
+        panic!()
+    };
+
+    listener.wait_with_callback(closure).unwrap();
+
+    assert_eq!(Arc::strong_count(&data), 1);
+}
+
+#[test]
+fn test_link_wait_with_callback_nested() {
+    let mut listener = WstpLink::listen(Protocol::IntraProcess, "").unwrap();
+
+    let mut failed = false;
+
+    listener
+        .wait_with_callback(|this: &mut WstpLink| {
+            // We're expecting this to panic.
+            let _ = this.wait_with_callback(|_| panic!());
+
+            failed = true;
+            std::ops::ControlFlow::Break(())
+        })
+        .unwrap();
+
+    assert!(!failed);
+}

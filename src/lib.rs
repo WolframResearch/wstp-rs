@@ -6,6 +6,8 @@
 mod env;
 mod error;
 mod link_server;
+mod wait;
+
 
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
