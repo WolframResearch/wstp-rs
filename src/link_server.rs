@@ -194,7 +194,7 @@ impl LinkServer {
     }
 }
 
-extern "C" fn callback_trampoline<F: FnMut(WstpLink)>(
+extern "C" fn callback_trampoline<F: FnMut(WstpLink) + Send + Sync>(
     raw_link_server: sys::WSLinkServer,
     raw_link: sys::WSLINK,
 ) {
@@ -209,6 +209,8 @@ extern "C" fn callback_trampoline<F: FnMut(WstpLink)>(
 
         user_closure = &mut *(raw_user_closure as *mut F);
 
+        // SAFETY: This is safe because `raw_link` is an entirely new link which we have
+        //         ownership over.
         link = WstpLink::unchecked_new(raw_link);
     }
 
