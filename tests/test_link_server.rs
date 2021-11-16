@@ -108,12 +108,7 @@ fn test_link_server_bind_and_accept() {
     //
 
     // Create a connection to the LinkServer, and exchange some data.
-    let mut link = Link::connect_with_options(
-        Protocol::TCPIP,
-        &format!("{}@127.0.0.1", PORT),
-        &["MLUseUUIDTCPIPConnection"],
-    )
-    .unwrap();
+    let mut link = Link::connect_to_link_server(("127.0.0.1", PORT)).unwrap();
 
     assert_eq!(link.activate(), Ok(()));
 
@@ -160,12 +155,7 @@ fn test_link_server_bind_and_incoming() {
     //
 
     // Create a connection to the LinkServer, and exchange some data.
-    let mut link = Link::connect_with_options(
-        Protocol::TCPIP,
-        &format!("{}@127.0.0.1", PORT),
-        &["MLUseUUIDTCPIPConnection"],
-    )
-    .unwrap();
+    let mut link = Link::connect_to_link_server(("127.0.0.1", PORT)).unwrap();
 
     assert_eq!(link.get_i64(), Ok(0));
     link.put_str("Done.").unwrap();

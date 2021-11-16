@@ -28,6 +28,8 @@ pub struct Incoming<'a> {
 impl LinkServer {
     /// Create a new `LinkServer` bound to the specified address.
     ///
+    /// Use [`Link::connect_to_link_server`] to connect to a `LinkServer`.
+    ///
     /// # Examples
     ///
     /// ```
