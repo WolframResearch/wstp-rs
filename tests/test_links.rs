@@ -120,6 +120,44 @@ fn test_tcpip_links() {
     check_send_data_across_link(listener, connector);
 }
 
+/// Test using the '@' character in the link name, which is parsed specially by the TCPIP
+/// protocol.
+#[test]
+fn test_tcpip_links_host_syntax() {
+    {
+        let listener = Link::listen(Protocol::TCPIP, "8080@localhost").unwrap();
+        let connector = Link::connect(Protocol::TCPIP, "8080@localhost").unwrap();
+
+        check_send_data_across_link(listener, connector);
+    }
+
+    // IPv4 localhost address
+    {
+        let listener = Link::listen(Protocol::TCPIP, "8080@127.0.0.1").unwrap();
+        let connector = Link::connect(Protocol::TCPIP, "8080@127.0.0.1").unwrap();
+
+        check_send_data_across_link(listener, connector);
+    }
+
+    // IPv6 localhost address
+    {
+        let listener = Link::listen(Protocol::TCPIP, "8080@::1").unwrap();
+        let connector = Link::connect(Protocol::TCPIP, "8080@::1").unwrap();
+
+        check_send_data_across_link(listener, connector);
+    }
+}
+
+#[test]
+fn test_bug_tcpip_listen_returns_unknown() {
+    assert_eq!(
+        Link::listen(Protocol::TCPIP, "8080@badhost")
+            .unwrap_err()
+            .code(),
+        Some(sys::WSEUNKNOWN)
+    );
+}
+
 //======================================
 // Misc.
 //======================================
