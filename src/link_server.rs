@@ -51,17 +51,16 @@ impl LinkServer {
     where
         F: FnMut(Link) + Send + Sync,
     {
-        let raw_server: sys::WSLinkServer;
         let mut err: std::os::raw::c_int = sys::MLEOK;
 
-        unsafe {
-            raw_server = sys::WSNewLinkServerWithPort(
+        let raw_server: sys::WSLinkServer = unsafe {
+            sys::WSNewLinkServerWithPort(
                 crate::stdenv()?.raw_env,
                 port,
                 Box::into_raw(Box::new(callback)) as *mut std::ffi::c_void,
                 &mut err,
-            );
-        }
+            )
+        };
 
         if raw_server.is_null() || err != sys::MLEOK {
             return Err(Error::from_code(err));
