@@ -250,6 +250,22 @@ fn test_link_wait_with_callback_nested() {
     assert!(!failed);
 }
 
+//-----------------------------
+// Test transfering expressions
+//-----------------------------
+
+#[test]
+fn test_loopback_transfer_expression() {
+    let mut a = Link::new_loopback().unwrap();
+    let mut b = Link::new_loopback().unwrap();
+
+    a.put_i64(5).unwrap();
+
+    a.transfer_expr_to(&mut b).unwrap();
+
+    assert_eq!(b.get_i64().unwrap(), 5);
+}
+
 //--------------------------------
 // Test getting and putting arrays
 //--------------------------------

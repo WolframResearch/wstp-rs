@@ -462,6 +462,38 @@ impl Link {
 
         Ok(())
     }
+
+    /// Transfer an expression from this link to another.
+    ///
+    /// # Example
+    ///
+    /// Transfer an expression between two loopback links:
+    ///
+    /// ```
+    /// use wstp::Link;
+    ///
+    /// let mut a = Link::new_loopback().unwrap();
+    /// let mut b = Link::new_loopback().unwrap();
+    ///
+    /// // Put an expression into `a`
+    /// a.put_i64(5).unwrap();
+    ///
+    /// // Transfer it to `b`
+    /// a.transfer_expr_to(&mut b).unwrap();
+    ///
+    /// assert_eq!(b.get_i64().unwrap(), 5);
+    /// ```
+    ///
+    /// *WSTP C API Documentation:* [`WSTransferExpression()`](https://reference.wolfram.com/language/ref/c/WSTransferExpression.html)
+    pub fn transfer_expr_to(&mut self, dest: &mut Link) -> Result<(), Error> {
+        let result = unsafe { sys::WSTransferExpression(dest.raw_link, self.raw_link) };
+
+        if result == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        Ok(())
+    }
 }
 
 //======================================
