@@ -124,6 +124,10 @@ fn test_tcpip_links() {
 // Misc.
 //======================================
 
+//-------------------------------------
+// Test wait() and wait_with_callback()
+//-------------------------------------
+
 #[test]
 fn test_link_wait_with_callback() {
     let mut listener = Link::listen(Protocol::IntraProcess, "").unwrap();
@@ -206,4 +210,20 @@ fn test_link_wait_with_callback_nested() {
         .unwrap();
 
     assert!(!failed);
+}
+
+//--------------------------------
+// Test getting and putting arrays
+//--------------------------------
+
+#[test]
+fn test_roundtrip_i64_array() {
+    let mut link = Link::new_loopback().unwrap();
+
+    link.put_i64_array(&[1, 2, 3, 4], &[2, 2]).unwrap();
+
+    let out = link.get_i64_array().unwrap();
+
+    assert_eq!(out.data().len(), 4);
+    assert_eq!(out.dimensions(), &[2, 2]);
 }

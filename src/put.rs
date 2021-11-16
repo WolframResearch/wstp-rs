@@ -1,5 +1,6 @@
 use std::convert::TryFrom;
 use std::ffi::CString;
+use std::iter::FromIterator;
 
 use crate::{
     sys::{
@@ -102,6 +103,47 @@ impl Link {
         if unsafe { WSPutReal64(self.raw_link, value) } == 0 {
             return Err(self.error_or_unknown());
         }
+        Ok(())
+    }
+
+    /// Put a multidimensional array of [`i64`].
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the product of `dimensions` is not equal to `data.len()`.
+    ///
+    /// *WSTP C API Documentation:* [`WSPutInteger64Array()`](https://reference.wolfram.com/language/ref/c/WSPutInteger64Array.html)
+    pub fn put_i64_array(
+        &mut self,
+        data: &[i64],
+        dimensions: &[usize],
+    ) -> Result<(), Error> {
+        assert_eq!(
+            data.len(),
+            dimensions.iter().product(),
+            "data length does not equal product of dimensions"
+        );
+
+        let dimensions: Vec<i32> = Vec::from_iter(
+            dimensions
+                .iter()
+                .map(|&val| i32::try_from(val).expect("i32 overflows usize")),
+        );
+
+        let result = unsafe {
+            sys::WSPutInteger64Array(
+                self.raw_link,
+                data.as_ptr(),
+                dimensions.as_ptr(),
+                std::ptr::null_mut(),
+                dimensions.len() as i32,
+            )
+        };
+
+        if result == 0 {
+            return Err(self.error_or_unknown());
+        }
+
         Ok(())
     }
 }

@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use std::iter::FromIterator;
 
 use crate::{
     sys::{
@@ -160,6 +161,71 @@ impl Link {
         }
         Ok(real)
     }
+
+    /// Get a multidimensional array of [`i64`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use wstp::Link;
+    ///
+    /// let mut link = Link::new_loopback().unwrap();
+    ///
+    /// link.put_i64_array(&[1, 2, 3, 4], &[2, 2]).unwrap();
+    ///
+    /// let out = link.get_i64_array().unwrap();
+    ///
+    /// assert_eq!(out.data().len(), 4);
+    /// assert_eq!(out.dimensions(), &[2, 2]);
+    /// ```
+    ///
+    /// *WSTP C API Documentation:* [`WSGetInteger64Array()`](https://reference.wolfram.com/language/ref/c/WSGetInteger64Array.html)
+    pub fn get_i64_array(&mut self) -> Result<Array<i64>, Error> {
+        let Link { raw_link } = *self;
+
+        let mut data_ptr: *mut i64 = std::ptr::null_mut();
+        let mut dims_ptr: *mut i32 = std::ptr::null_mut();
+        let mut heads_ptr: *mut *mut std::os::raw::c_char = std::ptr::null_mut();
+        let mut depth: i32 = 0;
+
+        let result = unsafe {
+            sys::WSGetInteger64Array(
+                raw_link,
+                &mut data_ptr,
+                &mut dims_ptr,
+                &mut heads_ptr,
+                &mut depth,
+            )
+        };
+
+        if result == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        let depth =
+            usize::try_from(depth).expect("WSGetInteger64Array depth overflows usize");
+
+        let dims: &[i32] = unsafe { std::slice::from_raw_parts(dims_ptr, depth) };
+        let dims = Vec::from_iter(dims.iter().map(|&val| {
+            usize::try_from(val)
+                .expect("WSGetInteger64Array dimension size overflows usize")
+        }));
+
+        Ok(Array {
+            link: self,
+            data_ptr,
+            release_callback: Box::new(move |link: &Link| unsafe {
+                sys::WSReleaseInteger64Array(
+                    link.raw_link,
+                    data_ptr,
+                    dims_ptr,
+                    heads_ptr,
+                    depth as i32,
+                );
+            }),
+            dimensions: dims,
+        })
+    }
 }
 
 
@@ -213,5 +279,63 @@ impl<'link> Drop for LinkStr<'link> {
             true => unsafe { WSReleaseSymbol(link.raw_link, c_string) },
             false => unsafe { WSReleaseString(link.raw_link, c_string) },
         }
+    }
+}
+
+
+/// Multidimensional array borrowed from a [`Link`].
+///
+/// [`Array`] is returned from:
+///
+/// * [`Link::get_i64_array()`]
+pub struct Array<'link, T> {
+    link: &'link Link,
+
+    data_ptr: *mut T,
+    release_callback: Box<dyn FnMut(&Link)>,
+
+    dimensions: Vec<usize>,
+}
+
+impl<'link, T> Array<'link, T> {
+    /// Access the elements stored in this [`Array`] as a flat buffer.
+    pub fn data<'s>(&'s self) -> &'s [T] {
+        let data_len: usize = self.dimensions.iter().product();
+
+        // SAFETY:
+        //     It is important that the lifetime of `data` is tied to `self` and NOT to
+        //     'link. A `&'link Array` could outlive the `Array` object, which would lead
+        //     to a a use-after-free bug because the string data is deallocated when
+        //     `Array` is dropped.
+        let data: &'s [T] =
+            unsafe { std::slice::from_raw_parts(self.data_ptr, data_len) };
+
+        data
+    }
+
+    pub fn rank(&self) -> usize {
+        self.dimensions.len()
+    }
+
+    pub fn dimensions(&self) -> &[usize] {
+        self.dimensions.as_slice()
+    }
+
+    /// Length of the first dimension of this array.
+    pub fn length(&self) -> usize {
+        self.dimensions[0]
+    }
+}
+
+impl<'link, T> Drop for Array<'link, T> {
+    fn drop(&mut self) {
+        let Array {
+            link,
+            ref mut release_callback,
+            data_ptr: _,
+            dimensions: _,
+        } = *self;
+
+        release_callback(link)
     }
 }
