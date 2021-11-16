@@ -131,10 +131,10 @@ impl Link {
     /// *WSTP C API Documentation:* [`WSLoopbackOpen()`](https://reference.wolfram.com/language/ref/c/WSLoopbackOpen.html)
     pub fn new_loopback() -> Result<Self, Error> {
         unsafe {
-            let mut err: std::os::raw::c_int = sys::MLEOK as i32;
+            let mut err: std::os::raw::c_int = sys::MLEOK;
             let raw_link = sys::WSLoopbackOpen(stdenv()?.raw_env, &mut err);
 
-            if raw_link.is_null() || err != (sys::MLEOK as i32) {
+            if raw_link.is_null() || err != sys::MLEOK {
                 return Err(Error::from_code(err));
             }
 
@@ -215,7 +215,7 @@ impl Link {
             })
             .collect();
 
-        let mut err: std::os::raw::c_int = sys::MLEOK as i32;
+        let mut err: std::os::raw::c_int = sys::MLEOK;
 
         let raw_link = unsafe {
             sys::WSOpenArgcArgv(
@@ -234,7 +234,7 @@ impl Link {
             }
         }
 
-        if raw_link.is_null() || err != (sys::MLEOK as i32) {
+        if raw_link.is_null() || err != sys::MLEOK {
             return Err(Error::from_code(err));
         }
 
@@ -305,7 +305,7 @@ impl Link {
         let (code, message): (i32, *const i8) =
             unsafe { (sys::WSError(raw_link), WSErrorMessage(raw_link)) };
 
-        if code == (sys::MLEOK as i32) || message.is_null() {
+        if code == sys::MLEOK || message.is_null() {
             return None;
         }
 
@@ -401,7 +401,7 @@ impl Link {
     pub fn raw_get_next(&mut self) -> Result<i32, Error> {
         let type_ = unsafe { sys::WSGetNext(self.raw_link) };
 
-        if type_ == sys::WSTKERR as i32 {
+        if type_ == sys::WSTKERR {
             return Err(self.error_or_unknown());
         }
 
@@ -412,7 +412,7 @@ impl Link {
     pub fn raw_next_packet(&mut self) -> Result<i32, Error> {
         let type_ = unsafe { sys::WSNextPacket(self.raw_link) };
 
-        if type_ == sys::ILLEGALPKT as i32 {
+        if type_ == sys::ILLEGALPKT {
             return Err(self.error_or_unknown());
         }
 

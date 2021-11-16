@@ -150,6 +150,10 @@ fn generate_bindings(compiler_additions: &PathBuf) {
         //       have a look at the generated documentation, which is easier to read and
         //       navigate anyway.
         .rustfmt_bindings(true)
+        // Force the WSE* error macro definitions to be interpreted as signed constants.
+        // WSTP uses `int` as it's error type, so this is necessary to avoid having to
+        // scatter `as i32` everywhere.
+        .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
         .generate()
         .expect("unable to generate Rust bindings to WSTP using bindgen");
 

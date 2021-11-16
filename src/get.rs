@@ -35,7 +35,7 @@ impl Link {
     pub fn get_raw_type(&mut self) -> Result<i32, Error> {
         let type_ = unsafe { sys::WSGetType(self.raw_link) };
 
-        if type_ == sys::WSTKERR as i32 {
+        if type_ == sys::WSTKERR {
             return Err(self.error_or_unknown());
         }
 

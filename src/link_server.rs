@@ -25,7 +25,7 @@ impl LinkServer {
     ///
     /// Use [`LinkServer::accept()`] to accept new connections to the link server.
     pub fn new(port: u16) -> Result<Self, Error> {
-        let mut err: std::os::raw::c_int = sys::MLEOK as i32;
+        let mut err: std::os::raw::c_int = sys::MLEOK;
 
         let raw_server: sys::WSLinkServer = unsafe {
             sys::WSNewLinkServerWithPort(
@@ -36,7 +36,7 @@ impl LinkServer {
             )
         };
 
-        if raw_server.is_null() || err != (sys::MLEOK as i32) {
+        if raw_server.is_null() || err != sys::MLEOK {
             return Err(Error::from_code(err));
         }
 
@@ -52,7 +52,7 @@ impl LinkServer {
         F: FnMut(Link) + Send + Sync,
     {
         let raw_server: sys::WSLinkServer;
-        let mut err: std::os::raw::c_int = sys::MLEOK as i32;
+        let mut err: std::os::raw::c_int = sys::MLEOK;
 
         unsafe {
             raw_server = sys::WSNewLinkServerWithPort(
@@ -63,7 +63,7 @@ impl LinkServer {
             );
         }
 
-        if raw_server.is_null() || err != (sys::MLEOK as i32) {
+        if raw_server.is_null() || err != sys::MLEOK {
             return Err(Error::from_code(err));
         }
 
@@ -89,12 +89,12 @@ impl LinkServer {
 
     /// Fallible variant of [LinkServer::port()].
     pub fn try_port(&self) -> Result<u16, Error> {
-        let mut err: std::os::raw::c_int = sys::MLEOK as i32;
+        let mut err: std::os::raw::c_int = sys::MLEOK;
 
         let port: u16 =
             unsafe { sys::WSPortFromLinkServer(self.raw_link_server, &mut err) };
 
-        if err != sys::MLEOK as i32 {
+        if err != sys::MLEOK {
             return Err(Error::from_code(err));
         }
 
@@ -111,12 +111,12 @@ impl LinkServer {
 
     /// Fallible variant of [LinkServer::interface()].
     pub fn try_interface(&self) -> Result<std::net::IpAddr, Error> {
-        let mut err: c_int = sys::MLEOK as i32;
+        let mut err: c_int = sys::MLEOK;
 
         let iface_cstr =
             unsafe { sys::WSInterfaceFromLinkServer(self.raw_link_server, &mut err) };
 
-        if iface_cstr.is_null() || err != (sys::MLEOK as i32) {
+        if iface_cstr.is_null() || err != sys::MLEOK {
             return Err(Error::from_code(err));
         }
 
@@ -172,13 +172,13 @@ impl LinkServer {
     ///
     /// *WSTP C API Documentation:* [`WSWaitForNewLinkFromLinkServer`](https://reference.wolfram.com/language/ref/c/WSWaitForNewLinkFromLinkServer.html)
     pub fn accept(&mut self) -> Result<Link, Error> {
-        let mut err: c_int = sys::MLEOK as i32;
+        let mut err: c_int = sys::MLEOK;
 
         let raw_link = unsafe {
             sys::WSWaitForNewLinkFromLinkServer(self.raw_link_server, &mut err)
         };
 
-        if raw_link.is_null() || err != (sys::MLEOK as i32) {
+        if raw_link.is_null() || err != sys::MLEOK {
             return Err(Error::from_code(err));
         }
 
@@ -198,7 +198,7 @@ extern "C" fn callback_trampoline<F: FnMut(Link) + Send + Sync>(
     raw_link_server: sys::WSLinkServer,
     raw_link: sys::WSLINK,
 ) {
-    let mut err: std::os::raw::c_int = sys::MLEOK as i32;
+    let mut err: std::os::raw::c_int = sys::MLEOK;
 
     let user_closure: &mut F;
     let link: Link;

@@ -105,7 +105,7 @@ fn test_shared_memory_name_taken_error() {
     let _a = Link::listen(Protocol::SharedMemory, NAME.into()).unwrap();
     let b = Link::listen(Protocol::SharedMemory, NAME.into());
 
-    assert_eq!(b.unwrap_err().code().unwrap(), sys::MLENAMETAKEN as i32);
+    assert_eq!(b.unwrap_err().code().unwrap(), sys::MLENAMETAKEN);
 }
 
 //======================================
@@ -262,6 +262,6 @@ fn test_mismatched_type_error() {
 
     assert_eq!(
         link.get_i64().map_err(|err| err.code()),
-        Err(Some(sys::MLEGSEQ as i32))
+        Err(Some(sys::MLEGSEQ))
     );
 }

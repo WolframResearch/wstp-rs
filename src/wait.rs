@@ -28,7 +28,7 @@ impl Link {
 
         let result: i32 = unsafe { sys::WSWaitForLinkActivity(raw_link) };
 
-        match result as u32 {
+        match result {
             sys::WSWAITSUCCESS => Ok(()),
             sys::WSWAITERROR => Err(self.error_or_unknown()),
             _ => Err(Error::custom(format!(
@@ -121,7 +121,7 @@ impl Link {
             Box::from_raw(boxed_closure_ptr);
         };
 
-        match result as u32 {
+        match result {
             sys::WSWAITSUCCESS => Ok(true),
             sys::WSWAITCALLBACKABORTED => Ok(false),
             sys::WSWAITERROR => Err(self.error_or_unknown()),

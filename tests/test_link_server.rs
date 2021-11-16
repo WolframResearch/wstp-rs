@@ -90,5 +90,5 @@ fn test_name_taken_error() {
     let b = LinkServer::new_with_callback(PORT, |_| {})
         .expect_err("multiple link servers bound to same port??");
 
-    assert_eq!(b.code(), Some(sys::MLENAMETAKEN as i32));
+    assert_eq!(b.code(), Some(sys::MLENAMETAKEN));
 }
