@@ -240,3 +240,28 @@ fn test_roundtrip_f64_array() {
     assert_eq!(out.data(), &[3.141, 1.618, 2.718]);
     assert_eq!(out.dimensions(), &[3]);
 }
+
+// Test that getting an f64 array as an i64 array performs rounding.
+#[test]
+fn test_mismatched_array_type_rounding() {
+    let mut link = Link::new_loopback().unwrap();
+
+    link.put_f64_array(&[3.141, 1.618, 2.718], &[3]).unwrap();
+
+    let out = link.get_i64_array().unwrap();
+
+    assert_eq!(out.data(), &[3, 2, 3]);
+}
+
+// Test that reading an f64 array as a scalar i64 results in an get sequence error.
+#[test]
+fn test_mismatched_type_error() {
+    let mut link = Link::new_loopback().unwrap();
+
+    link.put_f64_array(&[3.141, 1.618, 2.718], &[3]).unwrap();
+
+    assert_eq!(
+        link.get_i64().map_err(|err| err.code()),
+        Err(Some(sys::MLEGSEQ as i32))
+    );
+}
