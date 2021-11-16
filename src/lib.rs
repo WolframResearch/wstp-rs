@@ -178,7 +178,7 @@ impl Link {
         addrs: A,
     ) -> Result<Self, Error> {
         let addrs = addrs.to_socket_addrs().map_err(|err| {
-            Error::custom(format!("error binding LinkServer to address: {}", err))
+            Error::custom(format!("error connecting to LinkServer address: {}", err))
         })?;
 
         // Try each address, returning the first one which connects successfully.
