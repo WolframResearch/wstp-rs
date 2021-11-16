@@ -1,4 +1,4 @@
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::fmt;
 use std::os::raw::c_int;
 use std::str::FromStr;
@@ -17,6 +17,52 @@ pub struct LinkServer {
 }
 
 impl LinkServer {
+    /// Create a new `LinkServer` bound to the specified address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use wstp::LinkServer;
+    ///
+    /// let server = LinkServer::bind("127.0.0.1:8080").unwrap();
+    /// ```
+    pub fn bind<A: std::net::ToSocketAddrs>(addrs: A) -> Result<Self, Error> {
+        let addrs = addrs.to_socket_addrs().map_err(|err| {
+            Error::custom(format!("error binding LinkServer to address: {}", err))
+        })?;
+
+        let mut last_error = None;
+
+        // Try each address, returning the first one which binds successfully.
+        for addr in addrs {
+            let mut err: std::os::raw::c_int = sys::MLEOK;
+
+            let iface = CString::new(addr.ip().to_string())
+                .expect("failed to create CString from LinkServer interface");
+
+            let raw_link_server: sys::WSLinkServer = unsafe {
+                sys::WSNewLinkServerWithPortAndInterface(
+                    crate::stdenv()?.raw_env,
+                    addr.port(),
+                    iface.as_ptr(),
+                    std::ptr::null_mut(),
+                    &mut err,
+                )
+            };
+
+            if raw_link_server.is_null() || err != sys::MLEOK {
+                last_error = Some(Error::from_code(err));
+                continue;
+            }
+
+            return Ok(LinkServer { raw_link_server });
+        }
+
+        Err(last_error.unwrap_or_else(|| {
+            Error::custom(format!("error binding LinkServer to socket address"))
+        }))
+    }
+
     /// Create a new link server.
     ///
     /// It is not possible to register a callback function to accept new link connections
