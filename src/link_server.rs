@@ -42,10 +42,8 @@ impl LinkServer {
             Error::custom(format!("error binding LinkServer to address: {}", err))
         })?;
 
-        let mut last_error = None;
-
         // Try each address, returning the first one which binds successfully.
-        for addr in addrs {
+        crate::for_each_addr(addrs.collect(), |addr| {
             let mut err: std::os::raw::c_int = sys::MLEOK;
 
             let iface = CString::new(addr.ip().to_string())
@@ -62,16 +60,11 @@ impl LinkServer {
             };
 
             if raw_link_server.is_null() || err != sys::MLEOK {
-                last_error = Some(Error::from_code(err));
-                continue;
+                return Err(Error::from_code(err));
             }
 
             return Ok(LinkServer { raw_link_server });
-        }
-
-        Err(last_error.unwrap_or_else(|| {
-            Error::custom(format!("error binding LinkServer to socket address"))
-        }))
+        })
     }
 
     /// Create a new link server.

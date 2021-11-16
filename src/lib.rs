@@ -15,6 +15,7 @@ mod put;
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
 use std::fmt::{self, Display};
+use std::net;
 
 use wl_expr::{Expr, ExprKind, Normal, Number, Symbol};
 use wstp_sys::{WSErrorMessage, WSReady, WSReleaseErrorMessage, WSLINK};
@@ -173,47 +174,31 @@ impl Link {
     /// the addresses until a connection is successful. If none of the addresses result
     /// in a successful connection, the error returned from the last connection attempt
     /// (the last address) is returned.
-    pub fn connect_to_link_server<A: std::net::ToSocketAddrs>(
+    pub fn connect_to_link_server<A: net::ToSocketAddrs>(
         addrs: A,
     ) -> Result<Self, Error> {
         let addrs = addrs.to_socket_addrs().map_err(|err| {
             Error::custom(format!("error binding LinkServer to address: {}", err))
         })?;
 
-        let mut last_error = None;
-
-        for addr in addrs {
+        // Try each address, returning the first one which connects successfully.
+        for_each_addr(addrs.collect(), |addr| {
             // Construct an address string in the special syntax used by WSTP.
             let wstp_addr = format!("{}@{}", addr.port(), addr.ip());
 
-            let mut link = match Link::connect_with_options(
+            let mut link = Link::connect_with_options(
                 Protocol::TCPIP,
                 &wstp_addr,
                 // Pass the magic option which signals that we're connecting to a
                 // LinkServer, not just a normal Link.
                 &["MLUseUUIDTCPIPConnection"],
-            ) {
-                Ok(link) => link,
-                Err(err) => {
-                    last_error = Some(err);
-                    continue;
-                },
-            };
+            )?;
 
-            match link.activate() {
-                Ok(()) => (),
-                Err(err) => {
-                    last_error = Some(err);
-                    continue;
-                },
-            }
+            // TODO: Should we activate here, or let the caller do this?
+            let () = link.activate()?;
 
             return Ok(link);
-        }
-
-        Err(last_error.unwrap_or_else(|| {
-            Error::custom(format!("error connecting to LinkServer socket address"))
-        }))
+        })
     }
 
     pub fn connect_with_options(
@@ -610,6 +595,23 @@ fn get_expr(link: &mut Link) -> Result<Expr, Error> {
 //======================================
 // Utilities
 //======================================
+
+fn for_each_addr<T, F>(addrs: Vec<net::SocketAddr>, mut func: F) -> Result<T, Error>
+where
+    F: FnMut(net::SocketAddr) -> Result<T, Error>,
+{
+    let mut last_error = None;
+
+    for addr in addrs {
+        match func(addr) {
+            Ok(result) => return Ok(result),
+            Err(err) => last_error = Some(err),
+        }
+    }
+
+    Err(last_error
+        .unwrap_or_else(|| Error::custom(format!("socket address list is empty"))))
+}
 
 //======================================
 // Formatting impls
