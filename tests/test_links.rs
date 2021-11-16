@@ -227,3 +227,16 @@ fn test_roundtrip_i64_array() {
     assert_eq!(out.data().len(), 4);
     assert_eq!(out.dimensions(), &[2, 2]);
 }
+
+#[test]
+fn test_roundtrip_f64_array() {
+    let mut link = Link::new_loopback().unwrap();
+
+    link.put_f64_array(&[3.141, 1.618, 2.718], &[3]).unwrap();
+
+    let out = link.get_f64_array().unwrap();
+
+    assert_eq!(out.data().len(), 3);
+    assert_eq!(out.data(), &[3.141, 1.618, 2.718]);
+    assert_eq!(out.dimensions(), &[3]);
+}

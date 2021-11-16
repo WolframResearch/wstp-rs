@@ -226,6 +226,72 @@ impl Link {
             dimensions: dims,
         })
     }
+
+    /// Get a multidimensional array of [`f64`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use wstp::Link;
+    ///
+    /// let mut link = Link::new_loopback().unwrap();
+    ///
+    /// link.put_f64_array(&[3.141, 1.618, 2.718], &[3]).unwrap();
+    ///
+    /// let out = link.get_f64_array().unwrap();
+    ///
+    /// assert_eq!(out.data().len(), 3);
+    /// assert_eq!(out.data(), &[3.141, 1.618, 2.718]);
+    /// assert_eq!(out.dimensions(), &[3]);
+    /// ```
+    ///
+    /// *WSTP C API Documentation:* [`WSGetReal64Array()`](https://reference.wolfram.com/language/ref/c/WSGetReal64Array.html)
+    pub fn get_f64_array(&mut self) -> Result<Array<f64>, Error> {
+        let Link { raw_link } = *self;
+
+        let mut data_ptr: *mut f64 = std::ptr::null_mut();
+        let mut dims_ptr: *mut i32 = std::ptr::null_mut();
+        let mut heads_ptr: *mut *mut std::os::raw::c_char = std::ptr::null_mut();
+        let mut depth: i32 = 0;
+
+        let result = unsafe {
+            sys::WSGetReal64Array(
+                raw_link,
+                &mut data_ptr,
+                &mut dims_ptr,
+                &mut heads_ptr,
+                &mut depth,
+            )
+        };
+
+        if result == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        let depth =
+            usize::try_from(depth).expect("WSGetInteger64Array depth overflows usize");
+
+        let dims: &[i32] = unsafe { std::slice::from_raw_parts(dims_ptr, depth) };
+        let dims = Vec::from_iter(dims.iter().map(|&val| {
+            usize::try_from(val)
+                .expect("WSGetInteger64Array dimension size overflows usize")
+        }));
+
+        Ok(Array {
+            link: self,
+            data_ptr,
+            release_callback: Box::new(move |link: &Link| unsafe {
+                sys::WSReleaseReal64Array(
+                    link.raw_link,
+                    data_ptr,
+                    dims_ptr,
+                    heads_ptr,
+                    depth as i32,
+                );
+            }),
+            dimensions: dims,
+        })
+    }
 }
 
 
