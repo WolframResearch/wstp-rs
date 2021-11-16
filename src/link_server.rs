@@ -16,6 +16,15 @@ pub struct LinkServer {
     raw_link_server: sys::WSLinkServer,
 }
 
+/// An iterator that infinitely [`accept`]s connections on a [`LinkServer`].
+///
+/// This `struct` is created by the [`LinkServer::incoming`] method.
+///
+/// [`accept`]: LinkServer::accept
+pub struct Incoming<'a> {
+    server: &'a LinkServer,
+}
+
 impl LinkServer {
     /// Create a new `LinkServer` bound to the specified address.
     ///
@@ -216,7 +225,7 @@ impl LinkServer {
     /// connections asyncronously via a callback function.
     ///
     /// *WSTP C API Documentation:* [`WSWaitForNewLinkFromLinkServer`](https://reference.wolfram.com/language/ref/c/WSWaitForNewLinkFromLinkServer.html)
-    pub fn accept(&mut self) -> Result<Link, Error> {
+    pub fn accept(&self) -> Result<Link, Error> {
         let mut err: c_int = sys::MLEOK;
 
         let raw_link = unsafe {
@@ -230,6 +239,14 @@ impl LinkServer {
         let link = unsafe { Link::unchecked_new(raw_link) };
 
         Ok(link)
+    }
+
+    /// Returns an iterator over the connections being received on this server.
+    ///
+    /// The returned iterator will never return None. Iterating over it is equivalent to
+    /// calling [`LinkServer::accept`] in a loop.
+    pub fn incoming(&self) -> Incoming {
+        Incoming { server: self }
     }
 
     /// Returns the raw [`WSLinkServer`](https://reference.wolfram.com/language/ref/c/WSLinkServer.html)
@@ -282,5 +299,13 @@ impl fmt::Debug for LinkServer {
             self.port(),
             self.interface()
         )
+    }
+}
+
+impl<'a> Iterator for Incoming<'a> {
+    type Item = Result<Link, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(self.server.accept())
     }
 }

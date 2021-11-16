@@ -22,7 +22,7 @@ fn test_link_server_using_accept() {
     //
 
     let thread = std::thread::spawn(move || {
-        let mut server = LinkServer::new(PORT).unwrap();
+        let server = LinkServer::new(PORT).unwrap();
 
         assert_eq!(server.try_port(), Ok(PORT));
         assert!(server.try_interface().is_ok());
@@ -77,7 +77,7 @@ fn test_link_server_bind_and_accept() {
     //
 
     let thread = std::thread::spawn(move || {
-        let mut server = LinkServer::bind(("127.0.0.1", PORT)).unwrap();
+        let server = LinkServer::bind(("127.0.0.1", PORT)).unwrap();
 
         assert_eq!(server.try_port(), Ok(PORT));
         assert!(server.try_interface().is_ok());
@@ -110,13 +110,62 @@ fn test_link_server_bind_and_accept() {
     // Create a connection to the LinkServer, and exchange some data.
     let mut link = Link::connect_with_options(
         Protocol::TCPIP,
-        // &PORT.to_string(),
         &format!("{}@127.0.0.1", PORT),
         &["MLUseUUIDTCPIPConnection"],
     )
     .unwrap();
 
     assert_eq!(link.activate(), Ok(()));
+
+    assert_eq!(link.get_i64(), Ok(0));
+    link.put_str("Done.").unwrap();
+    link.flush().unwrap();
+
+    // Stop the link server.
+    thread.join().unwrap();
+}
+
+#[test]
+fn test_link_server_bind_and_incoming() {
+    let _guard = MUTEX.lock().unwrap();
+
+    //
+    // In a separate thread, spawn a link server to recieve connections.
+    //
+
+    let thread = std::thread::spawn(move || {
+        let server = LinkServer::bind(("127.0.0.1", PORT)).unwrap();
+
+        assert_eq!(server.try_port(), Ok(PORT));
+        assert!(server.try_interface().is_ok());
+
+        for conn in server.incoming() {
+            let mut conn = conn.unwrap();
+
+            conn.put_i64(0).unwrap();
+            conn.flush().unwrap();
+
+            assert_eq!(conn.get_string(), Ok("Done.".to_owned()));
+
+            // Only handle one connection.
+            break;
+        }
+    });
+
+    // Give the link server time to start listening for connections.
+    std::thread::sleep(std::time::Duration::from_millis(100));
+
+    //
+    // Create new UUID-based TCPIP connection to the LinkServer connection.
+    //
+
+    // Create a connection to the LinkServer, and exchange some data.
+    let mut link = Link::connect_with_options(
+        Protocol::TCPIP,
+        &format!("{}@127.0.0.1", PORT),
+        &["MLUseUUIDTCPIPConnection"],
+    )
+    .unwrap();
 
     assert_eq!(link.get_i64(), Ok(0));
     link.put_str("Done.").unwrap();
