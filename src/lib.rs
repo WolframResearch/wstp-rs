@@ -8,17 +8,16 @@ mod error;
 mod link_server;
 mod wait;
 
+mod get;
+mod put;
+
 
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
 use std::fmt::{self, Display};
 
 use wl_expr::{Expr, ExprKind, Normal, Number, Symbol};
-use wstp_sys::{
-    WSErrorMessage, WSGetArgCount, WSGetInteger64, WSGetReal64, WSGetUTF8String,
-    WSPutArgCount, WSPutInteger64, WSPutReal64, WSPutUTF8String, WSPutUTF8Symbol,
-    WSReady, WSReleaseErrorMessage, WSReleaseString, WSReleaseSymbol, WSLINK,
-};
+use wstp_sys::{WSErrorMessage, WSReady, WSReleaseErrorMessage, WSLINK};
 
 //-----------------------------------
 // Public re-exports and type aliases
@@ -26,8 +25,7 @@ use wstp_sys::{
 
 pub use wstp_sys as sys;
 
-pub use crate::error::Error;
-pub use crate::link_server::LinkServer;
+pub use crate::{error::Error, get::LinkStr, link_server::LinkServer};
 
 // TODO: Remove this type alias after outside code has had time to update.
 #[deprecated(note = "use wstp::Link")]
@@ -38,6 +36,7 @@ pub type WstpLink = Link;
 
 // TODO: Make this function public from `wstp`?
 pub(crate) use env::stdenv;
+
 
 //======================================
 // Source
@@ -102,22 +101,6 @@ impl Link {
 ///   Add a wrapper type for [`Link`] which enforces that `WSEnableLinkLock()`
 ///   has been called, and implements [`Sync`].
 unsafe impl Send for Link {}
-
-/// Reference to string data borrowed from a [`Link`].
-///
-/// `LinkStr` is returned from [`Link::get_string_ref()`] and [`Link::get_symbol_ref()`].
-///
-/// When [`LinkStr::drop()`] is called, `WSReleaseString()` is used to deallocate the
-/// underlying string.
-pub struct LinkStr<'link> {
-    link: &'link Link,
-    // Note: See `LinkStr::to_str()` for discussion of the safety reasons we *don't* store
-    //       a `&str` field (even though that would have the benefit of paying the UTF-8
-    //       validation penalty only once).
-    c_string: *const u8,
-    byte_length: usize,
-    is_symbol: bool,
-}
 
 /// Transport protocol used to communicate between two [`Link`] end points.
 pub enum Protocol {
@@ -474,266 +457,6 @@ impl Link {
         }
 
         Ok(())
-    }
-
-    /// TODO: Augment this function with a `get_type()` method which returns a
-    ///       (non-exhaustive) enum value.
-    ///
-    /// If the returned type is [`WSTKERR`][sys::WSTKERR], an error is returned.
-    ///
-    /// *WSTP C API Documentation:* [`WSGetType()`](https://reference.wolfram.com/language/ref/c/WSGetType.html)
-    pub fn get_raw_type(&mut self) -> Result<i32, Error> {
-        let type_ = unsafe { sys::WSGetType(self.raw_link) };
-
-        if type_ == sys::WSTKERR as i32 {
-            return Err(self.error_or_unknown());
-        }
-
-        Ok(type_)
-    }
-
-    /// TODO: Augment this function with a `put_type()` method which takes a
-    ///       (non-exhaustive) enum value.
-    ///
-    /// *WSTP C API Documentation:* [`WSPutType()`](https://reference.wolfram.com/language/ref/c/WSPutType.html)
-    pub fn put_raw_type(&mut self, type_: i32) -> Result<(), Error> {
-        if unsafe { sys::WSPutType(self.raw_link, type_) } == 0 {
-            return Err(self.error_or_unknown());
-        }
-
-        Ok(())
-    }
-
-    /// *WSTP C API Documentation:* [`WSGetInteger64()`](https://reference.wolfram.com/language/ref/c/WSGetInteger64.html)
-    pub fn get_i64(&mut self) -> Result<i64, Error> {
-        let mut int = 0;
-        if unsafe { WSGetInteger64(self.raw_link, &mut int) } == 0 {
-            return Err(self.error_or_unknown());
-        }
-        Ok(int)
-    }
-
-    /// *WSTP C API Documentation:* [`WSGetReal64()`](https://reference.wolfram.com/language/ref/c/WSGetReal64.html)
-    pub fn get_f64(&mut self) -> Result<f64, Error> {
-        let mut real: f64 = 0.0;
-        if unsafe { WSGetReal64(self.raw_link, &mut real) } == 0 {
-            return Err(self.error_or_unknown());
-        }
-        Ok(real)
-    }
-
-    // TODO:
-    //     Reserving the name `get_str()` in case it's possible in the future to implement
-    //     implement a `Link::get_str() -> &str` method. It may be safe to do that if
-    //     we either:
-    //
-    //       * Keep track of all the strings we need to call `WSReleaseString` on, and
-    //         then do so in `Link::drop()`.
-    //       * Verify that we don't need to explicitly deallocate the string data, because
-    //         they will be deallocated when the mempool is freed (presumably during
-    //         WSClose()?).
-
-    /// *WSTP C API Documentation:* [`WSGetUTF8String()`](https://reference.wolfram.com/language/ref/c/WSGetUTF8String.html)
-    pub fn get_string_ref<'link>(&'link mut self) -> Result<LinkStr<'link>, Error> {
-        let mut c_string: *const u8 = std::ptr::null();
-        let mut num_bytes: i32 = 0;
-        let mut num_chars = 0;
-
-        if unsafe {
-            WSGetUTF8String(self.raw_link, &mut c_string, &mut num_bytes, &mut num_chars)
-        } == 0
-        {
-            // NOTE: According to the documentation, we do NOT have to release
-            //      `string` if the function returns an error.
-            return Err(self.error_or_unknown());
-        }
-
-        let num_bytes = usize::try_from(num_bytes).unwrap();
-
-        Ok(LinkStr {
-            link: self,
-            c_string,
-            byte_length: num_bytes,
-            // Needed to control whether `WSReleaseString` or `WSReleaseSymbol` is called.
-            is_symbol: false,
-        })
-    }
-
-    /// Convenience wrapper around [`Link::get_string_ref()`].
-    pub fn get_string(&mut self) -> Result<String, Error> {
-        Ok(self.get_string_ref()?.to_str().to_owned())
-    }
-
-    /// *WSTP C API Documentation:* [`WSGetUTF8Symbol()`](https://reference.wolfram.com/language/ref/c/WSGetUTF8Symbol.html)
-    pub fn get_symbol_ref<'link>(&'link mut self) -> Result<LinkStr<'link>, Error> {
-        let mut c_string: *const u8 = std::ptr::null();
-        let mut num_bytes: i32 = 0;
-        let mut num_chars = 0;
-
-        if unsafe {
-            sys::WSGetUTF8Symbol(
-                self.raw_link,
-                &mut c_string,
-                &mut num_bytes,
-                &mut num_chars,
-            )
-        } == 0
-        {
-            // NOTE: According to the documentation, we do NOT have to release
-            //      `string` if the function returns an error.
-            return Err(self.error_or_unknown());
-        }
-
-        let num_bytes = usize::try_from(num_bytes).unwrap();
-
-        Ok(LinkStr {
-            link: self,
-            c_string,
-            byte_length: num_bytes,
-            // Needed to control whether `WSReleaseString` or `WSReleaseSymbol` is called.
-            is_symbol: true,
-        })
-    }
-
-    /// *WSTP C API Documentation:* [`WSGetArgCount()`](https://reference.wolfram.com/language/ref/c/WSGetArgCount.html)
-    pub fn get_arg_count(&mut self) -> Result<usize, Error> {
-        let mut arg_count = 0;
-
-        if unsafe { WSGetArgCount(self.raw_link, &mut arg_count) } == 0 {
-            return Err(self.error_or_unknown());
-        }
-
-        let arg_count = usize::try_from(arg_count)
-            // This really shouldn't happen on any modern 32/64 bit OS. If this
-            // condition *is* reached, it's more likely going to be do to an ABI or
-            // numeric environment handling issue.
-            .expect("WSTKFUNC argument count could not be converted to usize");
-
-        Ok(arg_count)
-    }
-
-    /// *WSTP C API Documentation:* [`WSPutInteger64()`](https://reference.wolfram.com/language/ref/c/WSPutInteger64.html)
-    pub fn put_i64(&mut self, value: i64) -> Result<(), Error> {
-        if unsafe { WSPutInteger64(self.raw_link, value) } == 0 {
-            return Err(self.error_or_unknown());
-        }
-        Ok(())
-    }
-
-    /// *WSTP C API Documentation:* [`WSPutReal64()`](https://reference.wolfram.com/language/ref/c/WSPutReal64.html)
-    pub fn put_f64(&mut self, value: f64) -> Result<(), Error> {
-        if unsafe { WSPutReal64(self.raw_link, value) } == 0 {
-            return Err(self.error_or_unknown());
-        }
-        Ok(())
-    }
-
-    /// *WSTP C API Documentation:* [`WSPutUTF8String()`](https://reference.wolfram.com/language/ref/c/WSPutUTF8String.html)
-    pub fn put_str(&mut self, string: &str) -> Result<(), Error> {
-        // TODO: Optimization:
-        //     This intermediate CString allocation may not actually be necessary. Because
-        //     WSPutUTF8String() takes a pointer + length pair, it's possible it doesn't
-        //     require that the string be NULL terminated. I'm not confident that is the
-        //     case though, and it isn't explicitly documented one way or the other.
-        //     Investigate this in the WSTP sources, and fix this if possible. If fixed,
-        //     be sure to include this assertion (`str`'s can contain NULL bytes, and
-        //     I have much less confidence that older parts of WSTP are strict about not
-        //     using strlen() on strings internally).
-        //
-        //         assert!(!string.bytes().any(|byte| byte == 0));
-        let c_string = CString::new(string).unwrap();
-
-        let len = i32::try_from(c_string.as_bytes().len()).expect("usize overflows i32");
-        let ptr = c_string.as_ptr() as *const u8;
-
-        if unsafe { WSPutUTF8String(self.raw_link, ptr, len) } == 0 {
-            return Err(self.error_or_unknown());
-        }
-
-        Ok(())
-    }
-
-    /// *WSTP C API Documentation:* [`WSPutUTF8Symbol()`](https://reference.wolfram.com/language/ref/c/WSPutUTF8Symbol.html)
-    pub fn put_symbol(&mut self, symbol: &str) -> Result<(), Error> {
-        let c_string = CString::new(symbol).unwrap();
-
-        let len = i32::try_from(c_string.as_bytes().len()).expect("usize overflows i32");
-        let ptr = c_string.as_ptr() as *const u8;
-
-        if unsafe { WSPutUTF8Symbol(self.raw_link, ptr, len) } == 0 {
-            return Err(self.error_or_unknown());
-        }
-
-        Ok(())
-    }
-
-    /// *WSTP C API Documentation:* [`WSPutArgCount()`](https://reference.wolfram.com/language/ref/c/WSPutArgCount.html)
-    pub fn put_arg_count(&mut self, count: usize) -> Result<(), Error> {
-        let count: i32 = i32::try_from(count).map_err(|err| {
-            Error::custom(format!(
-                "put_arg_count: Error converting usize to i32: {}",
-                err
-            ))
-        })?;
-
-        if unsafe { WSPutArgCount(self.raw_link, count) } == 0 {
-            return Err(self.error_or_unknown());
-        }
-
-        Ok(())
-    }
-}
-
-impl<'link> LinkStr<'link> {
-    /// Get the UTF-8 string data.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if the contents of the string are not valid UTF-8.
-    pub fn to_str<'s>(&'s self) -> &'s str {
-        let LinkStr {
-            link: _,
-            c_string,
-            byte_length,
-            is_symbol: _,
-        } = *self;
-
-        // Safety: Assert this pre-condition of `slice::from_raw_parts()`.
-        assert!(byte_length < usize::try_from(isize::MAX).unwrap());
-
-        // SAFETY:
-        //     It is important that the lifetime of `bytes` is tied to `self` and NOT to
-        //     'link. A `&'link str` could outlive the `LinkStr` object, which would lead
-        //     to a a use-after-free bug because the string data is deallocated when
-        //     `LinkStr` is dropped.
-        let bytes: &'s [u8] =
-            unsafe { std::slice::from_raw_parts(c_string, byte_length) };
-
-        // TODO: Optimization: Do we trust WSTP enough to always produce valid UTF-8 to
-        //       use `str::from_utf8_unchecked()` here? If a client writes malformed data
-        //       with WSPutUTF8String, does WSTP validate it and return an error, or would
-        //       it be passed through to unsuspecting us?
-        // This function will panic if `c_string` is not valid UTF-8.
-        std::str::from_utf8(bytes).expect("WSTP returned non-UTF-8 string")
-    }
-}
-
-impl<'link> Drop for LinkStr<'link> {
-    fn drop(&mut self) {
-        let LinkStr {
-            link,
-            c_string,
-            byte_length: _,
-            is_symbol,
-        } = *self;
-
-        let c_string = c_string as *const i8;
-
-        // Deallocate the string data.
-        match is_symbol {
-            true => unsafe { WSReleaseSymbol(link.raw_link, c_string) },
-            false => unsafe { WSReleaseString(link.raw_link, c_string) },
-        }
     }
 }
 
