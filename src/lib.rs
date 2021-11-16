@@ -201,8 +201,8 @@ impl Link {
     ///
     /// * [`Link::listen()`]
     /// * [`Link::connect()`]
-    /// * [`Link::launch()`]
-    /// * [`Link::parent_connect()`]
+    // * [`Link::launch()`]
+    // * [`Link::parent_connect()`]
     pub fn open_with_args(args: &[&str]) -> Result<Self, Error> {
         // NOTE: Before returning, we must convert these back into CString's to
         //       deallocate them.
