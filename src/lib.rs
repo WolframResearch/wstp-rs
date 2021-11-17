@@ -266,6 +266,9 @@ impl Link {
     ///
     /// * [`Link::listen()`]
     /// * [`Link::connect()`]
+    /// * [`Link::tcpip_listen()`]
+    /// * [`Link::tcpip_connect()`]
+    /// * [`Link::connect_to_link_server()`]
     // * [`Link::launch()`]
     // * [`Link::parent_connect()`]
     pub fn open_with_args(args: &[&str]) -> Result<Self, Error> {
