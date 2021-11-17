@@ -168,6 +168,40 @@ impl Link {
         Link::connect_with_options(protocol, name, &[])
     }
 
+    /// Create a new WSTP [`TCPIP`][Protocol::TCPIP] link bound to `addr`.
+    ///
+    /// If `addr` yields multiple addresses, listening will be attempted with each of the
+    /// addresses until one succeeds and returns the listener. If none of the addresses
+    /// succeed in creating a listener, the error returned from the last attempt
+    /// (the last address) is returned.
+    pub fn tcpip_listen<A: net::ToSocketAddrs>(addr: A) -> Result<Self, Error> {
+        let addrs = addr.to_socket_addrs().map_err(|err| {
+            Error::custom(format!("error connecting to TCPIP Link address: {}", err))
+        })?;
+
+        // Try each address, returning the first one which binds for listening successfully.
+        for_each_addr(addrs.collect(), |addr| {
+            Link::listen(Protocol::TCPIP, &tcpip_link_name(&addr))
+        })
+    }
+
+    /// Connect to an existing WSTP [`TCPIP`][Protocol::TCPIP] link listening at `addr`.
+    ///
+    /// If `addr` yields multiple addresses, a connection will be attempted with each of
+    /// the addresses until a connection is successful. If none of the addresses result
+    /// in a successful connection, the error returned from the last connection attempt
+    /// (the last address) is returned.
+    pub fn tcpip_connect<A: net::ToSocketAddrs>(addr: A) -> Result<Self, Error> {
+        let addrs = addr.to_socket_addrs().map_err(|err| {
+            Error::custom(format!("error connecting to TCPIP Link address: {}", err))
+        })?;
+
+        // Try each address, returning the first one which connects successfully.
+        for_each_addr(addrs.collect(), |addr| {
+            Link::connect(Protocol::TCPIP, &tcpip_link_name(&addr))
+        })
+    }
+
     /// Open a WSTP [`Protocol::TCPIP`] connection to a [`LinkServer`].
     ///
     /// If `addrs` yields multiple addresses, a connection will be attempted with each of
@@ -183,12 +217,9 @@ impl Link {
 
         // Try each address, returning the first one which connects successfully.
         for_each_addr(addrs.collect(), |addr| {
-            // Construct an address string in the special syntax used by WSTP.
-            let wstp_addr = format!("{}@{}", addr.port(), addr.ip());
-
             let mut link = Link::connect_with_options(
                 Protocol::TCPIP,
-                &wstp_addr,
+                &tcpip_link_name(&addr),
                 // Pass the magic option which signals that we're connecting to a
                 // LinkServer, not just a normal Link.
                 &["MLUseUUIDTCPIPConnection"],
@@ -611,6 +642,11 @@ where
 
     Err(last_error
         .unwrap_or_else(|| Error::custom(format!("socket address list is empty"))))
+}
+
+/// Construct an address string in the special syntax used by WSTP.
+fn tcpip_link_name(addr: &net::SocketAddr) -> String {
+    format!("{}@{}", addr.port(), addr.ip())
 }
 
 //======================================

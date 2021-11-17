@@ -1,4 +1,11 @@
+use std::sync::Mutex;
 use wstp::{sys, Link, Protocol};
+
+lazy_static::lazy_static! {
+    /// Guard used to ensure the tests which bind to a port are run sequentially, so that
+    /// port is free for each test.
+    static ref MUTEX: Mutex<()> = Mutex::new(());
+}
 
 fn random_link_name() -> String {
     use rand::{distributions::Alphanumeric, Rng};
@@ -114,6 +121,8 @@ fn test_shared_memory_name_taken_error() {
 
 #[test]
 fn test_tcpip_links() {
+    let _guard = MUTEX.lock().unwrap();
+
     let listener = Link::listen(Protocol::TCPIP, "8080").unwrap();
     let connector = Link::connect(Protocol::TCPIP, "8080").unwrap();
 
@@ -124,6 +133,8 @@ fn test_tcpip_links() {
 /// protocol.
 #[test]
 fn test_tcpip_links_host_syntax() {
+    let _guard = MUTEX.lock().unwrap();
+
     {
         let listener = Link::listen(Protocol::TCPIP, "8080@localhost").unwrap();
         let connector = Link::connect(Protocol::TCPIP, "8080@localhost").unwrap();
@@ -146,6 +157,16 @@ fn test_tcpip_links_host_syntax() {
 
         check_send_data_across_link(listener, connector);
     }
+}
+
+#[test]
+fn test_tcpip_specific_link_creation_methods() {
+    let _guard = MUTEX.lock().unwrap();
+
+    let listener = Link::tcpip_listen("localhost:8080").unwrap();
+    let connector = Link::tcpip_connect("localhost:8080").unwrap();
+
+    check_send_data_across_link(listener, connector);
 }
 
 #[test]
