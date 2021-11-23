@@ -15,6 +15,7 @@ use crate::{
 ///
 /// When [`LinkStr::drop()`] is called, `WSReleaseString()` is used to deallocate the
 /// underlying string.
+#[derive(Debug)]
 pub struct LinkStr<'link> {
     link: &'link Link,
     // Note: See `LinkStr::to_str()` for discussion of the safety reasons we *don't* store
