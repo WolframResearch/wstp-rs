@@ -68,6 +68,18 @@ pub struct Link {
 impl Link {
     /// Transmute a `&mut WSLINK` into a `&mut Link`.
     ///
+    /// This operation enables usage of the safe [`Link`] wrapper type without assuming
+    /// ownership over the underying raw `WSLINK`.
+    ///
+    /// Use this function to construct a [`Link`] from a borrowed
+    /// [`WSLINK`][crate::sys::WSLINK]. This function should be used in LibraryLink
+    /// functions loaded via [`LibraryFunctionLoad`][LibraryFunctionLoad] instead of
+    /// [`Link::unchecked_new()`].
+    ///
+    /// [LibraryFunctionLoad]: https://reference.wolfram.com/language/ref/LibraryFunctionLoad.html
+    ///
+    /// # Safety
+    ///
     /// For this operation to be safe, the caller must ensure:
     ///
     /// * the `WSLINK` is validly initialized.
@@ -78,7 +90,7 @@ impl Link {
     /// * The [`Link`] type is a `#[repr(transparent)]` wrapper around around a
     ///   single field of type [`WSLINK`][crate::sys::WSLINK].
     #[inline]
-    unsafe fn unchecked_ref_cast_mut(from: &mut WSLINK) -> &mut Self {
+    pub unsafe fn unchecked_ref_cast_mut(from: &mut WSLINK) -> &mut Self {
         #[cfg(debug_assertions)]
         {
             #[allow(unused_imports)]
