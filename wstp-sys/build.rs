@@ -3,37 +3,27 @@
 //! It does this by finding the local Mathematica installation by using the users
 //! `wolframscript` to evaluate `$InstallationDirectory`. This script will fail if
 //! `wolframscript` is not on `$PATH`.
-extern crate bindgen;
 
-use cfg_if::cfg_if;
 
-use std::env;
 use std::path::PathBuf;
 use std::process;
 
-const WSTP_FRAMEWORK: &str = "wstp.framework/";
-const WSTP_STATIC_ARCHIVE: &str = "libWSTPi4.a";
+use cfg_if::cfg_if;
+
+use wolfram_app_discovery::WolframApp;
 
 fn main() {
-    // Path to the WSTP SDK 'CompilerAdditions' directory, which contains the libary
-    // header files and static and dynamic library files.
-    let sdk_compiler_additions = get_compiler_additions_directory();
+    let app = WolframApp::try_default().expect("unable to locate WolframApp");
 
-    println!(
-        "cargo:warning=info: Using WSTP CompilerAdditions directory at: {}",
-        sdk_compiler_additions.display()
-    );
+    //-------------
+    // Link to WSTP
+    //-------------
 
-    if !sdk_compiler_additions.is_dir() {
-        println!(
-            "cargo:error=WSTP CompilerAdditions directory does not exist: {}",
-            sdk_compiler_additions.display()
-        );
-        panic!();
-    }
+    // Path to the WSTP static library file.
+    let static_lib = &app.wstp_static_library_path()
+        .expect("unable to get WSTP static library path");
 
-    generate_bindings(&sdk_compiler_additions);
-    link_wstp_statically(&sdk_compiler_additions);
+    link_wstp_statically(&static_lib);
 
     // Note: This blog post explained this, and that this might need to change on Linux.
     //         https://flames-of-code.netlify.com/blog/rust-and-cmake-cplusplus/
@@ -44,11 +34,27 @@ fn main() {
     if cfg!(target_os = "macos") {
         println!("cargo:rustc-link-lib=framework=Foundation");
     }
+
+    //---------------------------------------------------------------
+    // Choose the pre-generated bindings to use for the target system
+    //---------------------------------------------------------------
+    // See docs/Development.md for instructions on how to generate
+    // bindings for new WL versions.
+
+    let wolfram_version = app.wolfram_version()
+        .expect("unable to get Wolfram Language vesion number");
+    let system_id = wolfram_app_discovery::system_id_from_target(&dbg!(std::env::var("TARGET").unwrap()))
+        .expect("unable to get System ID for target system");
+
+    // FIXME: Check that this file actually exists, and generate a nicer error if it
+    //        doesn't.
+
+    println!("cargo:rustc-env=CRATE_WSTP_SYS_WL_VERSION_NUMBER={}", wolfram_version);
+    println!("cargo:rustc-env=CRATE_WSTP_SYS_WL_SYSTEM_ID={}", system_id);
 }
 
 cfg_if![if #[cfg(all(target_os = "macos", target_arch = "x86_64"))] {
-    fn link_wstp_statically(compiler_additions: &PathBuf) {
-        let lib = compiler_additions.join(WSTP_STATIC_ARCHIVE);
+    fn link_wstp_statically(lib: &PathBuf) {
         let lib = lib.to_str()
             .expect("could not convert WSTP archive path to str");
         let lib = lipo_native_library(&lib);
@@ -125,123 +131,4 @@ fn link_library_file(libfile: PathBuf) {
         .trim_start_matches("lib");
     println!("cargo:rustc-link-search={}", search_dir);
     println!("cargo:rustc-link-lib=static={}", libname);
-}
-
-fn generate_bindings(compiler_additions: &PathBuf) {
-    let header = compiler_additions
-        .join(&*WSTP_FRAMEWORK)
-        .join("Headers/wstp.h");
-
-    let bindings = bindgen::Builder::default()
-        .clang_arg(format!(
-            "-I/{}",
-            compiler_additions
-                .join(&*WSTP_FRAMEWORK)
-                .join("Headers/")
-                .display()
-        ))
-        .header(header.display().to_string())
-        .generate_comments(true)
-        // NOTE: At time of writing this will silently fail to work if you are using a
-        //       nightly version of Rust, making the generated bindings almost impossible
-        //       to decipher.
-        //
-        //       Instead, use `$ cargo doc --document-private-items && open target/doc` to
-        //       have a look at the generated documentation, which is easier to read and
-        //       navigate anyway.
-        .rustfmt_bindings(true)
-        // Force the WSE* error macro definitions to be interpreted as signed constants.
-        // WSTP uses `int` as it's error type, so this is necessary to avoid having to
-        // scatter `as i32` everywhere.
-        .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
-        .generate()
-        .expect("unable to generate Rust bindings to WSTP using bindgen");
-
-    let filename = "WSTP_bindings.rs";
-    // OUT_DIR is set by cargo before running this build.rs file.
-    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap()).join(filename);
-    bindings
-        .write_to_file(out_path)
-        .expect("failed to write Rust bindings with IO error");
-}
-
-//======================================
-// Path lookup
-//======================================
-
-fn get_compiler_additions_directory() -> PathBuf {
-    if let Some(path) = get_env_var("WSTP_COMPILER_ADDITIONS") {
-        let path = PathBuf::from(path);
-        // Force a rebuild if the path has changed. This happens when developing WSTP.
-        println!("cargo:rerun-if-changed={}", path.display());
-        return path;
-    }
-
-    get_wolfram_installation()
-        .join("SystemFiles/Links/WSTP/DeveloperKit/")
-        .join(SYSTEM_ID)
-        .join("CompilerAdditions")
-}
-
-cfg_if![
-    if #[cfg(all(target_os = "macos", target_arch = "x86_64"))] {
-        const SYSTEM_ID: &str = "MacOSX-x86-64";
-    } else {
-        // FIXME: Update this to include common Linux/Windows (and ARM macOS)
-        //        platforms.
-        compile_error!("wstp-sys is unimplemented for this platform");
-    }
-];
-
-/// Evaluate `$InstallationDirectory` using wolframscript to get location of the
-/// developers Mathematica installation.
-///
-/// TODO: Make this value settable using an environment variable; some people don't have
-///       wolframscript, or they may have multiple Mathematica installations and will want
-///       to be able to exactly specify which one to use. WOLFRAM_INSTALLATION_DIRECTORY.
-fn get_wolfram_installation() -> PathBuf {
-    let output: process::Output = process::Command::new("wolframscript")
-        .args(&["-code", "$InstallationDirectory"])
-        .output()
-        .expect("unable to execute wolframscript command");
-
-    // NOTE: The purpose of the 2nd clause here checking for exit code 3 is to work around
-    //       a mis-feature of wolframscript to return the same exit code as the Kernel.
-    // TODO: Fix the bug in wolframscript which makes this necessary and remove the check
-    //       for `3`.
-    if !output.status.success() && output.status.code() != Some(3) {
-        panic!(
-            "wolframscript exited with non-success status code: {}",
-            output.status
-        );
-    }
-
-    let stdout = match String::from_utf8(output.stdout.clone()) {
-        Ok(s) => s,
-        Err(err) => {
-            panic!(
-                "wolframscript output is not valid UTF-8: {}: {}",
-                err,
-                String::from_utf8_lossy(&output.stdout)
-            );
-        },
-    };
-
-    let first_line = stdout
-        .lines()
-        .next()
-        .expect("wolframscript output was empty");
-
-    PathBuf::from(first_line)
-}
-
-fn get_env_var(var: &'static str) -> Option<String> {
-    println!("cargo:rerun-if-env-changed={}", var);
-    match std::env::var(var) {
-        Ok(string) => Some(string),
-        Err(std::env::VarError::NotPresent) => None,
-        Err(std::env::VarError::NotUnicode(err)) => {
-            panic!("value of env var '{}' is not valid unicode: {:?}", var, err)
-        },
-    }
 }

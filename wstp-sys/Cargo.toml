@@ -12,5 +12,6 @@ links = "WSTPi4"
 [dependencies]
 
 [build-dependencies]
-bindgen = "^0.58.1"
+wolfram-app-discovery = { git = "ssh://git@stash.wolfram.com:7999/~connorg/wolfram-app-discovery.git" }
+
 cfg-if = "0.1.10"

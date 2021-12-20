@@ -1,0 +1,4 @@
+# Generate bindings for the current platform.
+[tasks.gen-bindings]
+script_runner = "@rust"
+script = { file = "scripts/generate-versioned-bindings.rs" }
