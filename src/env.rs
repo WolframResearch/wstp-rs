@@ -19,10 +19,10 @@
 //! If the determination is made in the future to expose [`WstpEnv`] publically from `wstp`,
 //! some safety conditions will need to be satisfied:
 //!
-//!   * A [`Link`] MUST NOT be able to outlive the `WstpEnv` which it's creation was
-//!     associated with.
-//!   * All [`Link`]'s MUST be closed before the `WstpEnv` they are associated with is
-//!     deinitialized (essentially a restatement of the first condition).
+//!   * A [`Link`][crate::Link] MUST NOT be able to outlive the `WstpEnv` that its
+//!     creation was associated with.
+//!   * All [`Link`][crate::Link]'s MUST be closed before the `WstpEnv` they are
+//!     associated with is deinitialized (essentially a restatement of the first condition).
 
 use std::sync::Mutex;
 
