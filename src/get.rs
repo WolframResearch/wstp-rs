@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use std::ffi::{CStr, CString};
 use std::iter::FromIterator;
 
 use crate::{
@@ -123,6 +124,24 @@ impl Link {
     //==================================
     // Functions
     //==================================
+
+    pub fn test_head(&mut self, symbol: &str) -> Result<usize, Error> {
+        let c_string = CString::new(symbol).unwrap();
+
+        self.test_head_cstr(c_string.as_c_str())
+    }
+
+    pub fn test_head_cstr(&mut self, cstr: &CStr) -> Result<usize, Error> {
+        let mut len: std::os::raw::c_int = 0;
+
+        if unsafe { sys::WSTestHead(self.raw_link, cstr.as_ptr(), &mut len) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        let len = usize::try_from(len).expect("c_int overflows usize");
+
+        Ok(len)
+    }
 
     /// *WSTP C API Documentation:* [`WSGetArgCount()`](https://reference.wolfram.com/language/ref/c/WSGetArgCount.html)
     pub fn get_arg_count(&mut self) -> Result<usize, Error> {

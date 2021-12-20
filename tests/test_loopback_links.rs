@@ -156,3 +156,27 @@ fn test_loopback_new_packet() {
 
     assert!(!link.is_ready());
 }
+
+#[test]
+fn test_loopback_test_head() {
+    let mut link = Link::new_loopback().unwrap();
+
+    unsafe { sys::WSPutNext(link.raw_link(), sys::WSTKFUNC.into()) };
+    link.put_arg_count(1).unwrap();
+    link.put_symbol("List").unwrap();
+    link.put_i64(10).unwrap();
+
+    assert_eq!(link.test_head("List"), Ok(1));
+}
+
+#[test]
+fn test_loopback_test_head_error() {
+    let mut link = Link::new_loopback().unwrap();
+
+    unsafe { sys::WSPutNext(link.raw_link(), sys::WSTKFUNC.into()) };
+    link.put_arg_count(1).unwrap();
+    link.put_symbol("List").unwrap();
+    link.put_i64(10).unwrap();
+
+    assert_eq!(link.test_head("Plot").unwrap_err().code().unwrap(), sys::WSEGSEQ);
+}
