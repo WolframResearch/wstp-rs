@@ -97,9 +97,35 @@ impl LinkServer {
 
     /// The callback is required to be [`Send`] so that it can be called from the link
     /// server's background thread, which accepts incoming connections.
+    ///
+    /// # `'static` bound
+    ///
+    /// The `'static` bound is required to prevent the callback closure from capturing a
+    /// reference to non-static data that it might outlive, for example a local variable:
+    ///
+    // Note: This example acts as a test that the below code is not possible to write. Do
+    //       not remove this example without replacing it with another test.
+    /// ```compile_fail
+    /// use std::sync::Mutex;
+    /// use wstp::LinkServer;
+    ///
+    /// let mut counter = Mutex::new(0);
+    ///
+    /// let server = LinkServer::new_with_callback(
+    ///     11235,
+    ///     // Error: the closure may outlive borrowed value `counter`
+    ///     |_| *counter.lock().unwrap() += 1
+    /// );
+    ///
+    /// println!("counter: {}", counter.lock().unwrap());
+    /// ```
+    ///
+    /// Note that the reasoning for the `Send` and `'static` constraints is similiar to
+    /// that for [`std::thread::spawn()`], whose documentation may be a useful
+    /// additional reference.
     pub fn new_with_callback<F>(port: u16, callback: F) -> Result<Self, Error>
     where
-        F: FnMut(Link) + Send + Sync,
+        F: FnMut(Link) + Send + Sync + 'static,
     {
         let mut err: std::os::raw::c_int = sys::MLEOK;
 
@@ -251,7 +277,7 @@ impl LinkServer {
     }
 }
 
-extern "C" fn callback_trampoline<F: FnMut(Link) + Send + Sync>(
+extern "C" fn callback_trampoline<F: FnMut(Link) + Send + Sync + 'static>(
     raw_link_server: sys::WSLinkServer,
     raw_link: sys::WSLINK,
 ) {
