@@ -52,11 +52,41 @@ fn main() {
     // FIXME: Check that this file actually exists, and generate a nicer error if it
     //        doesn't.
 
+    let bindings_path = PathBuf::from("generated")
+        .join(&wolfram_version.to_string())
+        .join(system_id)
+        .join("WSTP_bindings.rs");
+
+    println!("cargo:rerun-if-changed={}", bindings_path.display());
+
+    let absolute_bindings_path =
+        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap()).join(&bindings_path);
+
+    if !absolute_bindings_path.is_file() {
+        println!(
+            "
+    ==== ERROR: wstp-sys =====
+
+    Rust bindings for Wolfram WSTP for target configuration:
+
+        WolframVersion:    {}
+        SystemID:          {}
+
+    have not been pre-generated.
+
+    See wstp-sys/generated/ for a listing of currently available targets.
+
+    =========================================
+            ",
+            wolfram_version, system_id
+        );
+        panic!("<See printed error>");
+    }
+
     println!(
-        "cargo:rustc-env=CRATE_WSTP_SYS_WL_VERSION_NUMBER={}",
-        wolfram_version
+        "cargo:rustc-env=CRATE_WSTP_SYS_BINDINGS={}",
+        bindings_path.display()
     );
-    println!("cargo:rustc-env=CRATE_WSTP_SYS_WL_SYSTEM_ID={}", system_id);
 }
 
 cfg_if![if #[cfg(all(target_os = "macos", target_arch = "x86_64"))] {

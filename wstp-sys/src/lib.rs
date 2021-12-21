@@ -6,10 +6,4 @@
 )]
 
 // The name of this file comes from `build.rs`.
-include!(concat!(
-    "../generated/",
-    env!("CRATE_WSTP_SYS_WL_VERSION_NUMBER"),
-    "/",
-    env!("CRATE_WSTP_SYS_WL_SYSTEM_ID"),
-    "/WSTP_bindings.rs"
-));
+include!(concat!("../", env!("CRATE_WSTP_SYS_BINDINGS")));
