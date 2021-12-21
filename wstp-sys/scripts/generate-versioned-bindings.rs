@@ -11,43 +11,24 @@ use std::path::PathBuf;
 
 use wolfram_app_discovery::{WolframApp, WolframVersion};
 
-const WSTP_FRAMEWORK: &str = "wstp.framework/";
-
 const FILENAME: &str = "WSTP_bindings.rs";
 
 fn main() {
     let app = WolframApp::try_default().expect("unable to locate WolframApp");
 
-    // Path to the WSTP SDK 'CompilerAdditions' directory, which contains the libary
-    // header files and static and dynamic library files.
-    let sdk_compiler_additions = app.wstp_compiler_additions_path()
-        .expect("unable to get CompilerAdditions directory");
-
-    if !sdk_compiler_additions.is_dir() {
-        panic!(
-            "Error: WSTP CompilerAdditions directory does not exist: {}",
-            sdk_compiler_additions.display()
-        );
-    }
-
-    generate_bindings(&app, &sdk_compiler_additions);
+    generate_bindings(&app);
 }
 
-fn generate_bindings(app: &WolframApp, compiler_additions: &PathBuf) {
-    let header = compiler_additions
-        .join(&*WSTP_FRAMEWORK)
-        .join("Headers/wstp.h");
+fn generate_bindings(app: &WolframApp) {
+    // Path to the WSTP SDK 'wstp.h` header file.
+    let wstp_h = app
+        .wstp_c_header_path()
+        .expect("unable to get 'wstp.h' location");
+
+    assert!(wstp_h.file_name().unwrap() == "wstp.h");
 
     let bindings = bindgen::Builder::default()
-        // PRE_COMMIT: This is not necessary?
-        .clang_arg(format!(
-            "-I/{}",
-            compiler_additions
-                .join(&*WSTP_FRAMEWORK)
-                .join("Headers/")
-                .display()
-        ))
-        .header(header.display().to_string())
+        .header(wstp_h.display().to_string())
         .generate_comments(true)
         // NOTE: At time of writing this will silently fail to work if you are using a
         //       nightly version of Rust, making the generated bindings almost impossible
@@ -64,8 +45,8 @@ fn generate_bindings(app: &WolframApp, compiler_additions: &PathBuf) {
         .generate()
         .expect("unable to generate Rust bindings to WSTP using bindgen");
 
-    let version: WolframVersion = app.wolfram_version()
-        .expect("unable to get WolframVersion");
+    let version: WolframVersion =
+        app.wolfram_version().expect("unable to get WolframVersion");
 
     // OUT_DIR is set by cargo before running this build.rs file.
     let out_path = out_dir()
@@ -85,7 +66,7 @@ fn generate_bindings(app: &WolframApp, compiler_additions: &PathBuf) {
         "
         ==== GENERATED BINDINGS ====
 
-        WSTP CompilerAdditions Directory: {}
+        wstp.h location: {}
 
         $SystemID:                        {}
 
@@ -95,7 +76,7 @@ fn generate_bindings(app: &WolframApp, compiler_additions: &PathBuf) {
 
         ============================
         ",
-        compiler_additions.display(),
+        wstp_h.display(),
         wolfram_app_discovery::target_system_id(),
         version,
         out_path.strip_prefix(out_dir()).unwrap().display()
