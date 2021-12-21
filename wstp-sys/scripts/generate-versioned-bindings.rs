@@ -39,6 +39,7 @@ fn generate_bindings(app: &WolframApp, compiler_additions: &PathBuf) {
         .join("Headers/wstp.h");
 
     let bindings = bindgen::Builder::default()
+        // PRE_COMMIT: This is not necessary?
         .clang_arg(format!(
             "-I/{}",
             compiler_additions
