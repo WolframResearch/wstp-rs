@@ -6,11 +6,6 @@
 //! bindgen = "^0.58.1"
 //! wolfram-app-discovery = { git = "ssh://git@stash.wolfram.com:7999/~connorg/wolfram-app-discovery.git" }
 //! ```
-//! This script links the Mathematica WSTPi4 library.
-//!
-//! It does this by finding the local Mathematica installation by using the users
-//! `wolframscript` to evaluate `$InstallationDirectory`. This script will fail if
-//! `wolframscript` is not on `$PATH`.
 
 use std::path::PathBuf;
 
@@ -72,7 +67,7 @@ fn generate_bindings(app: &WolframApp, compiler_additions: &PathBuf) {
         .expect("unable to get WolframVersion");
 
     // OUT_DIR is set by cargo before running this build.rs file.
-    let out_path = PathBuf::from(out_dir())
+    let out_path = out_dir()
         .join("generated")
         .join(&version.to_string())
         .join(wolfram_app_discovery::target_system_id())
