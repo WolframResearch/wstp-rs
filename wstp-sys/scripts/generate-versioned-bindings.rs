@@ -85,7 +85,8 @@ fn generate_bindings(app: &WolframApp, compiler_additions: &PathBuf) {
         .write_to_file(&out_path)
         .expect("failed to write Rust bindings with IO error");
 
-    println!("
+    println!(
+        "
         ==== GENERATED BINDINGS ====
 
         WSTP CompilerAdditions Directory: {}

@@ -20,7 +20,8 @@ fn main() {
     //-------------
 
     // Path to the WSTP static library file.
-    let static_lib = &app.wstp_static_library_path()
+    let static_lib = &app
+        .wstp_static_library_path()
         .expect("unable to get WSTP static library path");
 
     link_wstp_statically(&static_lib);
@@ -41,15 +42,20 @@ fn main() {
     // See docs/Development.md for instructions on how to generate
     // bindings for new WL versions.
 
-    let wolfram_version = app.wolfram_version()
+    let wolfram_version = app
+        .wolfram_version()
         .expect("unable to get Wolfram Language vesion number");
-    let system_id = wolfram_app_discovery::system_id_from_target(&dbg!(std::env::var("TARGET").unwrap()))
-        .expect("unable to get System ID for target system");
+    let system_id =
+        wolfram_app_discovery::system_id_from_target(&std::env::var("TARGET").unwrap())
+            .expect("unable to get System ID for target system");
 
     // FIXME: Check that this file actually exists, and generate a nicer error if it
     //        doesn't.
 
-    println!("cargo:rustc-env=CRATE_WSTP_SYS_WL_VERSION_NUMBER={}", wolfram_version);
+    println!(
+        "cargo:rustc-env=CRATE_WSTP_SYS_WL_VERSION_NUMBER={}",
+        wolfram_version
+    );
     println!("cargo:rustc-env=CRATE_WSTP_SYS_WL_SYSTEM_ID={}", system_id);
 }
 
