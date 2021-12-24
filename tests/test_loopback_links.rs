@@ -93,7 +93,10 @@ fn test_get_arg_count_must_be_called_at_least_once() {
 
     // Expect that trying to get the head fails. Even though we know what the arg count
     // should be, we're still required to query it using WSArgCount().
-    assert_eq!(link.get_string_ref().unwrap_err().code(), Some(sys::WSEGSEQ));
+    assert_eq!(
+        link.get_string_ref().unwrap_err().code(),
+        Some(sys::WSEGSEQ)
+    );
 }
 
 #[test]
@@ -178,5 +181,8 @@ fn test_loopback_test_head_error() {
     link.put_symbol("List").unwrap();
     link.put_i64(10).unwrap();
 
-    assert_eq!(link.test_head("Plot").unwrap_err().code().unwrap(), sys::WSEGSEQ);
+    assert_eq!(
+        link.test_head("Plot").unwrap_err().code().unwrap(),
+        sys::WSEGSEQ
+    );
 }
