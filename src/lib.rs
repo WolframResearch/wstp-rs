@@ -574,6 +574,37 @@ impl Link {
 
         Ok(())
     }
+
+    /// Transfer the full contents of this loopback link to `dest`.
+    ///
+    /// *WSTP C API Documentation:* [`WSTransferToEndOfLoopbackLink()`](https://reference.wolfram.com/language/ref/c/WSTransferToEndOfLoopbackLink.html)
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `!self.is_loopback()`.
+    pub fn transfer_to_end_of_loopback_link(
+        &mut self,
+        dest: &mut Link,
+    ) -> Result<(), Error> {
+        if !self.is_loopback() {
+            panic!("transfer_to_end_of_loopback_link(): self must be a loopback link");
+        }
+
+        let result =
+            unsafe { sys::WSTransferToEndOfLoopbackLink(dest.raw_link, self.raw_link) };
+
+        if result == 0 {
+            return if let Some(err) = self.error() {
+                Err(err)
+            } else if let Some(err) = dest.error() {
+                Err(err)
+            } else {
+                Err(Error::custom("unknown error occurred on WSLINK".into()))
+            };
+        }
+
+        Ok(())
+    }
 }
 
 //======================================

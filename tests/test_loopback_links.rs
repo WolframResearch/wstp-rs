@@ -167,3 +167,31 @@ fn test_loopback_test_head_error() {
         sys::WSEGSEQ
     );
 }
+
+#[test]
+fn test_loopback_transfer_simple() {
+    let mut link = Link::new_loopback().unwrap();
+    link.put_str("hello").unwrap();
+
+    let mut new = Link::new_loopback().unwrap();
+    link.transfer_to_end_of_loopback_link(&mut new).unwrap();
+
+    assert_eq!(new.get_string_ref().unwrap().to_str(), "hello");
+}
+
+#[test]
+fn test_loopback_transfer_list() {
+    let mut link = Link::new_loopback().unwrap();
+    link.put_function("System`List", 3).unwrap();
+    link.put_i64(5).unwrap();
+    link.put_str("second").unwrap();
+    link.put_symbol("Global`foo").unwrap();
+
+    let mut new = Link::new_loopback().unwrap();
+    link.transfer_to_end_of_loopback_link(&mut new).unwrap();
+
+    assert_eq!(
+        new.get_expr().unwrap().to_string(),
+        "System`List[5, \"second\", Global`foo]"
+    );
+}
