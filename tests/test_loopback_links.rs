@@ -57,10 +57,7 @@ fn test_is_loopback() {
 fn test_loopback_idempotence_of_get_arg_count() {
     let mut link = Link::new_loopback().unwrap();
 
-    unsafe { sys::WSPutNext(link.raw_link(), sys::WSTKFUNC.into()) };
-
-    link.put_arg_count(1).unwrap();
-    link.put_symbol("List").unwrap();
+    link.put_function("List", 1).unwrap();
     link.put_i64(10).unwrap();
 
     assert_eq!(link.raw_get_next(), Ok(sys::WSTKFUNC.into()));
@@ -80,10 +77,7 @@ fn test_loopback_idempotence_of_get_arg_count() {
 fn test_get_arg_count_must_be_called_at_least_once() {
     let mut link = Link::new_loopback().unwrap();
 
-    unsafe { sys::WSPutNext(link.raw_link(), sys::WSTKFUNC.into()) };
-
-    link.put_arg_count(1).unwrap();
-    link.put_symbol("List").unwrap();
+    link.put_function("List", 1).unwrap();
     link.put_i64(10).unwrap();
 
     assert_eq!(link.raw_get_next(), Ok(sys::WSTKFUNC.into()));
@@ -103,10 +97,7 @@ fn test_get_arg_count_must_be_called_at_least_once() {
 fn test_loopback_basic_put_and_get_list() {
     let mut link = Link::new_loopback().unwrap();
 
-    unsafe { sys::WSPutNext(link.raw_link(), sys::WSTKFUNC.into()) };
-
-    link.put_arg_count(1).unwrap();
-    link.put_symbol("List").unwrap();
+    link.put_function("List", 1).unwrap();
     link.put_i64(10).unwrap();
 
 
@@ -123,10 +114,7 @@ fn test_loopback_basic_put_and_get_list() {
 fn test_loopback_get_next() {
     let mut link = Link::new_loopback().unwrap();
 
-    unsafe { sys::WSPutNext(link.raw_link(), sys::WSTKFUNC.into()) };
-
-    link.put_arg_count(1).unwrap();
-    link.put_symbol("List").unwrap();
+    link.put_function("List", 1).unwrap();
     link.put_i64(10).unwrap();
 
     assert!(link.is_ready());
@@ -144,10 +132,7 @@ fn test_loopback_get_next() {
 fn test_loopback_new_packet() {
     let mut link = Link::new_loopback().unwrap();
 
-    unsafe { sys::WSPutNext(link.raw_link(), sys::WSTKFUNC.into()) };
-
-    link.put_arg_count(1).unwrap();
-    link.put_symbol("List").unwrap();
+    link.put_function("List", 1).unwrap();
     link.put_i64(10).unwrap();
 
     assert!(link.is_ready());
@@ -164,9 +149,7 @@ fn test_loopback_new_packet() {
 fn test_loopback_test_head() {
     let mut link = Link::new_loopback().unwrap();
 
-    unsafe { sys::WSPutNext(link.raw_link(), sys::WSTKFUNC.into()) };
-    link.put_arg_count(1).unwrap();
-    link.put_symbol("List").unwrap();
+    link.put_function("List", 1).unwrap();
     link.put_i64(10).unwrap();
 
     assert_eq!(link.test_head("List"), Ok(1));
@@ -176,9 +159,7 @@ fn test_loopback_test_head() {
 fn test_loopback_test_head_error() {
     let mut link = Link::new_loopback().unwrap();
 
-    unsafe { sys::WSPutNext(link.raw_link(), sys::WSTKFUNC.into()) };
-    link.put_arg_count(1).unwrap();
-    link.put_symbol("List").unwrap();
+    link.put_function("List", 1).unwrap();
     link.put_i64(10).unwrap();
 
     assert_eq!(

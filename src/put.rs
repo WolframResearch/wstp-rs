@@ -74,6 +74,60 @@ impl Link {
     // Functions
     //==================================
 
+    /// Begin putting a function onto this link.
+    ///
+    /// # Examples
+    ///
+    /// Put the expression `{1, 2, 3}` on the link:
+    ///
+    /// ```
+    /// # use wstp::Link;
+    /// # fn test() -> Result<(), wstp::Error> {
+    /// let mut link = Link::new_loopback()?;
+    ///
+    /// link.put_function("System`List", 3)?;
+    /// link.put_i64(1)?;
+    /// link.put_i64(2)?;
+    /// link.put_i64(3)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// Put the expression `foo["a"]["b"]` on the link:
+    ///
+    /// ```
+    /// # use wstp::Link;
+    /// # fn test() -> Result<wl_expr::Expr, wstp::Error> {
+    /// let mut link = Link::new_loopback()?;
+    ///
+    /// link.put_function(None, 1)?;
+    /// link.put_function("Global`foo", 1)?;
+    /// link.put_str("a")?;
+    /// link.put_str("b")?;
+    /// # link.get_expr()
+    /// # }
+    ///
+    /// # use wl_expr::{Expr, Symbol};
+    /// # assert_eq!(test().unwrap(), Expr::normal(
+    /// #     Expr::normal(Symbol::new("Global`foo").unwrap(), vec![Expr::string("a")]),
+    /// #     vec![Expr::string("b")]
+    /// # ))
+    /// ```
+    pub fn put_function<'h, H: Into<Option<&'h str>>>(
+        &mut self,
+        head: H,
+        count: usize,
+    ) -> Result<(), Error> {
+        self.put_raw_type(i32::from(sys::WSTKFUNC))?;
+        self.put_arg_count(count)?;
+
+        if let Some(head) = head.into() {
+            self.put_symbol(head)?;
+        }
+
+        Ok(())
+    }
+
     /// *WSTP C API Documentation:* [`WSPutArgCount()`](https://reference.wolfram.com/language/ref/c/WSPutArgCount.html)
     pub fn put_arg_count(&mut self, count: usize) -> Result<(), Error> {
         let count: i32 = i32::try_from(count).map_err(|err| {
