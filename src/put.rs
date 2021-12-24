@@ -54,6 +54,10 @@ impl Link {
 
     /// *WSTP C API Documentation:* [`WSPutUTF8Symbol()`](https://reference.wolfram.com/language/ref/c/WSPutUTF8Symbol.html)
     pub fn put_symbol(&mut self, symbol: &str) -> Result<(), Error> {
+        // FIXME:
+        //     Is this extra allocation necessary?WSPutUTF8Symbol doesn't seem to require
+        //     that the data contains a NULL terminator, so we should be able to just
+        //     pass a pointer to `symbol`'s data.
         let c_string = CString::new(symbol).unwrap();
 
         let len = i32::try_from(c_string.as_bytes().len()).expect("usize overflows i32");
