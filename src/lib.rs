@@ -639,7 +639,7 @@ fn get_expr(link: &mut Link) -> Result<Expr, Error> {
                 Some(sym) => sym,
                 None => {
                     return Err(Error::custom(format!(
-                        "Symbol name `{}` has no context",
+                        "symbol name '{}' has no context",
                         symbol_str
                     )))
                 },

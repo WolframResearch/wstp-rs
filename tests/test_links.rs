@@ -287,6 +287,21 @@ fn test_loopback_transfer_expression() {
     assert_eq!(b.get_i64().unwrap(), 5);
 }
 
+#[test]
+fn test_get_expr_missing_symbol_context_error() {
+    let mut link = Link::new_loopback().unwrap();
+
+    link.put_symbol("List").unwrap();
+
+    let err: wstp::Error = link.get_expr().unwrap_err();
+
+    assert!(err.code().is_none());
+    assert_eq!(
+        err.to_string(),
+        "WSTP error: symbol name 'List' has no context"
+    );
+}
+
 //--------------------------------
 // Test getting and putting arrays
 //--------------------------------
