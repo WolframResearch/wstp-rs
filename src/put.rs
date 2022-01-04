@@ -97,7 +97,7 @@ impl Link {
     ///
     /// ```
     /// # use wstp::Link;
-    /// # fn test() -> Result<wl_expr::Expr, wstp::Error> {
+    /// # fn test() -> Result<wolfram_expr::Expr, wstp::Error> {
     /// let mut link = Link::new_loopback()?;
     ///
     /// link.put_function(None, 1)?;
@@ -107,9 +107,9 @@ impl Link {
     /// # link.get_expr()
     /// # }
     ///
-    /// # use wl_expr::{Expr, Symbol};
+    /// # use wolfram_expr::{Expr, Symbol};
     /// # assert_eq!(test().unwrap(), Expr::normal(
-    /// #     Expr::normal(Symbol::new("Global`foo").unwrap(), vec![Expr::string("a")]),
+    /// #     Expr::normal(Symbol::new("Global`foo"), vec![Expr::string("a")]),
     /// #     vec![Expr::string("b")]
     /// # ))
     /// ```

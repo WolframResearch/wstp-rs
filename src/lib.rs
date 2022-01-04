@@ -17,7 +17,7 @@ use std::ffi::{CStr, CString};
 use std::fmt::{self, Display};
 use std::net;
 
-use wl_expr::{Expr, ExprKind, Normal, Number, Symbol};
+use wolfram_expr::{Expr, ExprKind, Number, Symbol};
 use wstp_sys::{WSErrorMessage, WSReady, WSReleaseErrorMessage, WSLINK};
 
 //-----------------------------------
@@ -516,13 +516,13 @@ impl Link {
     /// Write an expression to this link.
     pub fn put_expr(&mut self, expr: &Expr) -> Result<(), Error> {
         match expr.kind() {
-            ExprKind::Normal(Normal { head, contents }) => {
+            ExprKind::Normal(normal) => {
                 self.put_raw_type(i32::from(sys::WSTKFUNC))?;
-                self.put_arg_count(contents.len())?;
+                self.put_arg_count(normal.elements().len())?;
 
-                let _: () = self.put_expr(&*head)?;
+                let _: () = self.put_expr(normal.head())?;
 
-                for elem in contents {
+                for elem in normal.elements() {
                     let _: () = self.put_expr(elem)?;
                 }
             },
@@ -532,10 +532,10 @@ impl Link {
             ExprKind::String(string) => {
                 self.put_str(string.as_str())?;
             },
-            ExprKind::Number(Number::Integer(int)) => {
+            ExprKind::Integer(int) => {
                 self.put_i64(*int)?;
             },
-            ExprKind::Number(Number::Real(real)) => {
+            ExprKind::Real(real) => {
                 self.put_f64(**real)?;
             },
         }
@@ -617,9 +617,9 @@ fn get_expr(link: &mut Link) -> Result<Expr, Error> {
     let type_: i32 = link.get_raw_type()?;
 
     let expr: Expr = match type_ as u8 {
-        WSTKINT => Expr::number(Number::Integer(link.get_i64()?)),
+        WSTKINT => Expr::from(link.get_i64()?),
         WSTKREAL => {
-            let real: wl_expr::F64 = match wl_expr::F64::new(link.get_f64()?) {
+            let real: wolfram_expr::F64 = match wolfram_expr::F64::new(link.get_f64()?) {
                 Ok(real) => real,
                 // TODO: Try passing a NaN value or a BigReal value through WSLINK.
                 Err(_is_nan) => {
@@ -635,7 +635,7 @@ fn get_expr(link: &mut Link) -> Result<Expr, Error> {
             let symbol_link_str = link.get_symbol_ref()?;
             let symbol_str = symbol_link_str.to_str();
 
-            let symbol: Symbol = match Symbol::new(symbol_str) {
+            let symbol: Symbol = match Symbol::try_new(symbol_str) {
                 Some(sym) => sym,
                 None => {
                     return Err(Error::custom(format!(

@@ -10,7 +10,7 @@ publish = false
 [dependencies]
 wstp-sys = { path = "./wstp-sys" }
 
-wl-expr = { package = "wl-expr-core", git = "ssh://git@stash.wolfram.com:7999/~connorg/wl-expr-core.git" }
+wolfram-expr = { git = "ssh://git@stash.wolfram.com:7999/~connorg/wolfram-expr.git" }
 
 lazy_static = "1.4.0"
 ref-cast = "1.0.6"
