@@ -32,13 +32,6 @@ pub use crate::{
     link_server::LinkServer,
 };
 
-// TODO: Remove this type alias after outside code has had time to update.
-#[deprecated(note = "use wstp::Link")]
-pub type WSTPLink = Link;
-
-#[deprecated(note = "use wstp::Link")]
-pub type WstpLink = Link;
-
 // TODO: Make this function public from `wstp`?
 pub(crate) use env::stdenv;
 
