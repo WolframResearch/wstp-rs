@@ -5,7 +5,10 @@ use std::str::FromStr;
 
 use crate::{sys, Error, Link};
 
-/// Wrapper around the [`WSLinkServer`](https://reference.wolfram.com/language/ref/c/WSLinkServer.html)
+/// WSTP link server.
+///
+/// This is a wrapper around the
+/// [`WSLinkServer`](https://reference.wolfram.com/language/ref/c/WSLinkServer.html)
 /// C type.
 ///
 /// # Usage

@@ -125,16 +125,58 @@ impl Link {
     // Functions
     //==================================
 
+    /// Check that the incoming expression is a function with head `symbol`.
+    ///
+    /// If the check succeeds, the number of elements in the incoming expression is
+    /// returned. Otherwise, an error is returned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use wstp::Link;
+    ///
+    /// #[derive(Debug, PartialEq)]
+    /// struct Quantity {
+    ///     value: f64,
+    ///     unit: String,
+    /// }
+    ///
+    /// fn get_quantity(link: &mut Link) -> Result<Quantity, wstp::Error> {
+    ///     // Use test_head() to verify that the incoming expression has the expected
+    ///     // head.
+    ///     let argc = link.test_head("System`Quantity")?;
+    ///
+    ///     assert!(argc == 2, "expected Quantity to have 2 arguments");
+    ///
+    ///     let value = link.get_f64()?;
+    ///     let unit = link.get_string()?;
+    ///
+    ///     Ok(Quantity { value, unit })
+    /// }
+    ///
+    /// let mut link = Link::new_loopback().unwrap();
+    /// link.put_function("System`Quantity", 2).unwrap();
+    /// link.put_f64(5.0).unwrap();
+    /// link.put_str("Seconds").unwrap();
+    ///
+    /// assert_eq!(
+    ///     get_quantity(&mut link),
+    ///     Ok(Quantity { value: 5.0, unit: "Seconds".into() })
+    /// );
+    /// ```
     pub fn test_head(&mut self, symbol: &str) -> Result<usize, Error> {
         let c_string = CString::new(symbol).unwrap();
 
         self.test_head_cstr(c_string.as_c_str())
     }
 
-    pub fn test_head_cstr(&mut self, cstr: &CStr) -> Result<usize, Error> {
+    /// Check that the incoming expression is a function with head `symbol`.
+    ///
+    /// This method is an optimized variant of [`Link::test_head()`].
+    pub fn test_head_cstr(&mut self, symbol: &CStr) -> Result<usize, Error> {
         let mut len: std::os::raw::c_int = 0;
 
-        if unsafe { sys::WSTestHead(self.raw_link, cstr.as_ptr(), &mut len) } == 0 {
+        if unsafe { sys::WSTestHead(self.raw_link, symbol.as_ptr(), &mut len) } == 0 {
             return Err(self.error_or_unknown());
         }
 
@@ -322,6 +364,11 @@ impl<'link> LinkStr<'link> {
     ///
     /// This function will panic if the contents of the string are not valid UTF-8.
     pub fn to_str<'s>(&'s self) -> &'s str {
+        self.try_to_str().expect("WSTP returned non-UTF-8 string")
+    }
+
+    #[allow(missing_docs)]
+    pub fn try_to_str<'s>(&'s self) -> Result<&'s str, std::str::Utf8Error> {
         let LinkStr {
             link: _,
             c_string,
@@ -345,7 +392,7 @@ impl<'link> LinkStr<'link> {
         //       with WSPutUTF8String, does WSTP validate it and return an error, or would
         //       it be passed through to unsuspecting us?
         // This function will panic if `c_string` is not valid UTF-8.
-        std::str::from_utf8(bytes).expect("WSTP returned non-UTF-8 string")
+        std::str::from_utf8(bytes)
     }
 }
 
@@ -369,11 +416,12 @@ impl<'link> Drop for LinkStr<'link> {
 }
 
 
-/// Multidimensional array borrowed from a [`Link`].
+/// Reference to a multidimensional rectangular array borrowed from a [`Link`].
 ///
 /// [`Array`] is returned from:
 ///
 /// * [`Link::get_i64_array()`]
+/// * [`Link::get_f64_array()`]
 pub struct Array<'link, T> {
     link: &'link Link,
 
@@ -399,10 +447,12 @@ impl<'link, T> Array<'link, T> {
         data
     }
 
+    /// Get the number of dimensions in this array.
     pub fn rank(&self) -> usize {
         self.dimensions.len()
     }
 
+    /// Get the dimensions of this array.
     pub fn dimensions(&self) -> &[usize] {
         self.dimensions.as_slice()
     }

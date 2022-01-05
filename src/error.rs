@@ -1,5 +1,8 @@
 use std::fmt::{self, Debug, Display};
 
+/// WSTP link error.
+///
+/// Use [`Error::code()`] to retrieve the WSTP error code, if applicable.
 #[derive(Clone, PartialEq)]
 pub struct Error {
     pub(crate) code: Option<i32>,
@@ -9,7 +12,7 @@ pub struct Error {
 impl Error {
     /// Get the WSTP error code, if applicable.
     ///
-    /// See listing of WSTP error codes in the [`WSError()`](https://reference.wolfram.com/language/ref/c/WSError.html)
+    /// Possible error codes are listed in the [`WSError()`](https://reference.wolfram.com/language/ref/c/WSError.html)
     /// documentation.
     pub fn code(&self) -> Option<i32> {
         self.code

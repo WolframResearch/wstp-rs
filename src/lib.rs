@@ -1,7 +1,139 @@
-//! Bindings to [Wolfram Symbolic Transfer Protocol (WSTP)](https://www.wolfram.com/wstp/).
+//! Bindings to the [Wolfram Symbolic Transfer Protocol (WSTP)](https://www.wolfram.com/wstp/)
+//! and library.
 //!
 //! This crate provides a set of safe and ergonomic bindings to the WSTP library, used to
 //! transfer Wolfram Language expressions between programs.
+//!
+//! # Quick Examples
+//!
+//! ### Loopback links
+//!
+//! Write an expression to a loopback link, and then read it back from the same link
+//! object:
+//!
+//! ```
+//! use wstp::Link;
+//!
+//! # fn example() -> Result<(), wstp::Error> {
+//! let mut link = Link::new_loopback()?;
+//!
+//! // Write the expression {"a", "b", "c"}
+//! link.put_function("System`List", 3)?;
+//! link.put_str("a")?;
+//! link.put_str("b")?;
+//! link.put_str("c")?;
+//!
+//! // Read back the expression, concatenating the elements as we go:
+//! let mut buffer = String::new();
+//!
+//! for _ in 0 .. link.test_head("System`List")? {
+//!     buffer.push_str(link.get_string_ref()?.to_str())
+//! }
+//!
+//! assert_eq!(buffer, "abc");
+//! # Ok(())
+//! # }
+//! #
+//! # example();
+//! ```
+//!
+//! ### Full-duplex links
+//!
+//! Transfer the expression `"hello!"` from one [`Link`] endpoint to another:
+//!
+//! ```
+//! use std::{thread, time::Duration};
+//! use wstp::{Link, Protocol};
+//!
+//! // Start a background thread with a listen()'ing link.
+//! let listening_thread = thread::spawn(|| {
+//!     // This will block until an incoming connection is made.
+//!     let mut link = Link::listen(Protocol::SharedMemory, "my-link").unwrap();
+//!
+//!     link.put_str("hello!").unwrap();
+//! });
+//!
+//! // Give the listening thread time to start before we
+//! // try to connect to it.
+//! thread::sleep(Duration::from_millis(20));
+//!
+//! let mut link = Link::connect(Protocol::SharedMemory, "my-link").unwrap();
+//! assert_eq!(link.get_string().unwrap(), "hello!");
+//! ```
+//!
+//! # What is WSTP?
+//!
+//! The name Wolfram Symbolic Transport Protocol (WSTP) refers to two interrelated things:
+//!
+//! * The WSTP *protocol*
+//! * The WSTP *library*, which provides the canonical implementation of the protocol via
+//!   a C API.
+//!
+//! ### The protocol
+//!
+//! At a high level, the WSTP defines a full-duplex communication channel optimized for
+//! the transfer of Wolfram Language expressions between two endpoints. A WSTP
+//! connection typically has exactly two [`Link`] endpoints
+//! ([loopback links][Link::new_loopback] are the only exception). A connection between two
+//! endpoints is established when one endpoint is created using [`Link::listen()`], and
+//! another endpoint is created using [`Link::connect()`].
+//!
+//! At a lower level, WSTP is actually three protocols:
+//!
+//! * [`IntraProcess`][Protocol::IntraProcess]
+//! * [`SharedMemory`][Protocol::SharedMemory]
+//! * [`TCPIP`][Protocol::TCPIP]
+//!
+//! which are represented by the [`Protocol`] enum. Each lower-level protocol is optimized
+//! for usage within a particular domain. For example, `IntraProcess` is the best link
+//! type to use when both [`Link`] endpoints reside within the same OS process, and
+//! `TCPIP` links can be used when the [`Link`] endpoints reside on different
+//! computers that are reachable across the network.
+//!
+//! Given that the different [`Protocol`] types use different mechanisms to transfer data,
+//! it is not possible to create a connection between links of different types. E.g. a
+//! `TCPIP` type link cannot connect to a `SharedMemory` link, even if both endpoints were
+//! created on the same computer and in the same process.
+//!
+// TODO: The packet protocol.
+//!
+//! ### The library
+//!
+//! The WSTP library is distributed as part the Wolfram Language as both a static and
+//! dynamic library. The WSTP SDK is present in the file system layout of the Mathematica,
+//! Wolfram Desktop, and [Wolfram Engine][WolframEngine] applications. The `wstp` crate
+//! is built on top of the [WSTP C API][CFunctions].
+//!
+//! When using the `wstp` crate as a dependency, the `wstp` crate's cargo build script
+//! will use `wolfram-app-discovery` to automatically locate any local installations of
+//! the Wolfram Language, and will link against the WSTP static library located within.
+//!
+//! The [Wolfram Engine][WolframEngine] can be downloaded and used for free for
+//! non-commercial or pre-production uses. A license must be purchased when used as part
+//! of a commercial or production-level product. See the *Licensing and Terms of
+//! Use* section in the [Wolfram Engine FAQ][WE-FAQ] for details.
+//!
+// TODO: Mention package manager downloads of WolframEngine.
+//!
+//!
+//! # Related Links
+//!
+//! * [WSTP and External Program Communication](https://reference.wolfram.com/language/tutorial/WSTPAndExternalProgramCommunicationOverview.html)
+//! * [How WSTP Is Used](https://reference.wolfram.com/language/tutorial/HowWSTPIsUsed.html)
+//! * [Alphabetical Listing of WSTP C Functions][CFunctions]
+//!
+//! ### Licensing
+//!
+//! Usage of the WSTP library is subject to the terms of the
+//! [MathLink License Agreement](https://www.wolfram.com/legal/agreements/mathlink.html).
+//!
+//!
+//! [WolframEngine]: https://www.wolfram.com/engine/
+//! [WE-FAQ]: https://www.wolfram.com/engine/faq/
+//! [CFunctions]: https://reference.wolfram.com/language/guide/AlphabeticalListingOfWSTPCFunctions.html
+
+#![warn(missing_docs)]
+
 
 mod env;
 mod error;
@@ -24,6 +156,10 @@ use wstp_sys::{WSErrorMessage, WSReady, WSReleaseErrorMessage, WSLINK};
 // Public re-exports and type aliases
 //-----------------------------------
 
+/// Raw bindings to the [WSTP C API][CFunctions].
+///
+/// [CFunctions]: https://reference.wolfram.com/language/guide/AlphabeticalListingOfWSTPCFunctions.html
+#[doc(inline)]
 pub use wstp_sys as sys;
 
 pub use crate::{
@@ -40,7 +176,7 @@ pub(crate) use env::stdenv;
 // Source
 //======================================
 
-/// A WSTP link object.
+/// WSTP link endpoint.
 ///
 /// [`WSClose()`][sys::WSClose] is called on the underlying [`WSLINK`] when
 /// [`Drop::drop()`][Link::drop] is called for a value of this type.
@@ -237,6 +373,7 @@ impl Link {
         })
     }
 
+    #[allow(missing_docs)]
     pub fn connect_with_options(
         protocol: Protocol,
         name: &str,
@@ -314,6 +451,7 @@ impl Link {
         Ok(Link { raw_link })
     }
 
+    /// Construct a [`Link`] from a raw [`WSLINK`] pointer.
     pub unsafe fn unchecked_new(raw_link: WSLINK) -> Self {
         Link { raw_link }
     }
