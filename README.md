@@ -1,43 +1,88 @@
 # wstp
 
-See [wl-library-link][wl-library-link] for examples of using this library in LibraryLink
-functions.
+Bindings to the [Wolfram Symbolic Transfer Protocol (WSTP)](https://www.wolfram.com/wstp/)
+library.
 
-[wl-library-link]: https://stash.wolfram.com/users/connorg/repos/wl-library-link/browse
+This crate provides a set of safe and ergonomic bindings to the WSTP library, used to
+transfer Wolfram Language expressions between programs.
 
-## Reading the documentation
+# Quick Examples
 
-This will generate source code documentation and open it in your web browser.
+#### Loopback links
 
-```shell
-$ cargo doc --document-private-items --open
+Write an expression to a loopback link, and then read it back from the same link
+object:
+
+```rust
+use wstp::Link;
+
+fn example() -> Result<(), wstp::Error> {
+    let mut link = Link::new_loopback()?;
+
+    // Write the expression {"a", "b", "c"}
+    link.put_function("System`List", 3)?;
+    link.put_str("a")?;
+    link.put_str("b")?;
+    link.put_str("c")?;
+
+    // Read back the expression, concatenating the elements as we go:
+    let mut buffer = String::new();
+
+    for _ in 0 .. link.test_head("System`List")? {
+        buffer.push_str(link.get_string_ref()?.to_str())
+    }
+
+    assert_eq!(buffer, "abc");
+
+    Ok(())
+}
+
+example();
 ```
 
-## Development
+#### Full-duplex links
 
-### Testing
+Transfer the expression `"hello!"` from one [`Link`] endpoint to another:
 
-Run the tests using a single thread:
+```rust
+use std::{thread, time::Duration};
+use wstp::{Link, Protocol};
 
-```$ shell
-cargo test -- --test-threads=1
+// Start a background thread with a listen()'ing link.
+let listening_thread = thread::spawn(|| {
+    // This will block until an incoming connection is made.
+    let mut link = Link::listen(Protocol::SharedMemory, "my-link").unwrap();
+
+    link.put_str("hello!").unwrap();
+});
+
+// Give the listening thread time to start before we
+// try to connect to it.
+thread::sleep(Duration::from_millis(20));
+
+let mut link = Link::connect(Protocol::SharedMemory, "my-link").unwrap();
+assert_eq!(link.get_string().unwrap(), "hello!");
 ```
 
-This is necessary to prevent the `LinkServer` tests from all trying to bind to the
-same port from multiple threads.
+See `wolfram-library-link` for examples of using WSTP links to transfer expressions
+to and from LibraryLink functions.
 
-#### `WSTP_COMPILER_ADDITIONS`
+## Related Links
 
-By default, the `wstp-sys/build.rs` script will attempt to use
-[`wolframscript`](https://www.wolfram.com/wolframscript/) to evaluate
-[`$InstallationDirectory`](https://reference.wolfram.com/language/ref/$InstallationDirectory.html)
-to locate your local Wolfram installation, and will use the WSTP library version contained
-within the application contents.
+#### Related crates
 
-The [`WSTP_COMPILER_ADDITIONS`] environment variable can be used manual specify the WSTP
-library location to use. This is useful if you have multiple Wolfram products installed,
-or if you are a developer of the WSTP library.
+* `wolfram-library-link` — author libraries that can be dynamically loaded by the Wolfram
+  Language
 
-```shell
-$ export WSTP_COMPILER_ADDITIONS=/Applications/Mathematica.app/Contents/SystemFiles/Links/WSTP/DeveloperKit/MacOSX-x86-64/CompilerAdditions
-```
+#### Related documentation
+
+* [WSTP and External Program Communication](https://reference.wolfram.com/language/tutorial/WSTPAndExternalProgramCommunicationOverview.html)
+* [How WSTP Is Used](https://reference.wolfram.com/language/tutorial/HowWSTPIsUsed.html)
+
+### Developer Notes
+
+See [**Development.md**](./docs/Development.md) for instructions on how to perform common
+development tasks when contributing to the `wstp` crate.
+
+See [**Maintenance.md**](./docs/Maintenance.md) for instructions on how to keep `wstp`
+up to date as new versions of the Wolfram Language are released.
