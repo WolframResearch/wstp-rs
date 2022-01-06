@@ -15,7 +15,7 @@ To regenerate the bindings, run the following sequence of commands on each platf
 this crate targets:
 
 ```shell
-$ export RUST_WOLFRAM_LOCATION=/Applications/Wolfram/Mathematica-12.3.0.app/Contents/
+$ export WOLFRAM_APP_DIRECTORY=/Applications/Wolfram/Mathematica-12.3.0.app
 $ cd wstp-sys
 $ cargo make gen-bindings
 ```
