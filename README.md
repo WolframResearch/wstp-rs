@@ -6,7 +6,7 @@ library.
 This crate provides a set of safe and ergonomic bindings to the WSTP library, used to
 transfer Wolfram Language expressions between programs.
 
-# Quick Examples
+## Quick Examples
 
 #### Loopback links
 
@@ -66,6 +66,16 @@ assert_eq!(link.get_string().unwrap(), "hello!");
 
 See `wolfram-library-link` for examples of using WSTP links to transfer expressions
 to and from LibraryLink functions.
+
+## Building `wstp`
+
+The `wstp` crate uses [`wolfram-app-discovery`] to locate a local installation of the
+Wolfram Language that contains a suitable copy of the WSTP SDK. If the WSTP SDK cannot
+be located, `wstp` will fail to build.
+
+If you have installed the Wolfram Language to a location unknown to `wolfram-app-discovery`,
+you may specify the installed location manually by setting the `WOLFRAM_APP_DISCOVERY`
+environment variable. See [Configuring wolfram-app-discovery] (**TODO**) for details.
 
 ## Related Links
 
