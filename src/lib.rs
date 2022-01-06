@@ -143,6 +143,12 @@ mod wait;
 mod get;
 mod put;
 
+/// Ensure that doc tests in the README.md file get run.
+#[doc(hidden)]
+mod test_readme {
+    #![doc = include_str!("../README.md")]
+}
+
 
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
