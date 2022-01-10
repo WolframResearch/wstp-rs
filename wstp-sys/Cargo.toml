@@ -2,8 +2,8 @@
 name = "wstp-sys"
 version = "0.1.0"
 authors = ["Connor Gray <code@connorgray.com>"]
+license = "MIT OR Apache-2.0"
 edition = "2018"
-publish = false
 
 # TODO(!): Audit this. Is this the correct name? Will it always be correct? What is the
 #          significance of the "i4" suffix -- is that a version number?
