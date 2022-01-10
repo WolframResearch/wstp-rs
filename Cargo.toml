@@ -11,7 +11,7 @@ publish = false
 [dependencies]
 wstp-sys = { path = "./wstp-sys" }
 
-wolfram-expr = { git = "ssh://git@stash.wolfram.com:7999/~connorg/wolfram-expr.git" }
+wolfram-expr = { git = "https://github.com/WolframResearch/wolfram-expr-rs" }
 
 lazy_static = "1.4.0"
 ref-cast = "1.0.6"
