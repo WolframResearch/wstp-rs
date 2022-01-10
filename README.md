@@ -64,8 +64,11 @@ let mut link = Link::connect(Protocol::SharedMemory, "my-link").unwrap();
 assert_eq!(link.get_string().unwrap(), "hello!");
 ```
 
-See [`wolfram-library-link`][wolfram-library-link] for examples of using WSTP links to
-transfer expressions to and from LibraryLink functions.
+See [`wolfram-library-link`][wolfram-library-link] for
+[examples of using WSTP links][wstp-wll-example] to transfer expressions to and from
+LibraryLink functions.
+
+[wstp-wll-example]: https://github.com/WolframResearch/wolfram-library-link-rs/blob/master/wolfram-library-link/examples/wstp.rs
 
 ## Building `wstp`
 
