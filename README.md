@@ -64,14 +64,14 @@ let mut link = Link::connect(Protocol::SharedMemory, "my-link").unwrap();
 assert_eq!(link.get_string().unwrap(), "hello!");
 ```
 
-See `wolfram-library-link` for examples of using WSTP links to transfer expressions
-to and from LibraryLink functions.
+See [`wolfram-library-link`][wolfram-library-link] for examples of using WSTP links to
+transfer expressions to and from LibraryLink functions.
 
 ## Building `wstp`
 
-The `wstp` crate uses [`wolfram-app-discovery`] to locate a local installation of the
-Wolfram Language that contains a suitable copy of the WSTP SDK. If the WSTP SDK cannot
-be located, `wstp` will fail to build.
+The `wstp` crate uses [`wolfram-app-discovery`][wolfram-app-discovery] to locate a local
+installation of the Wolfram Language that contains a suitable copy of the WSTP SDK. If the
+WSTP SDK cannot be located, `wstp` will fail to build.
 
 If you have installed the Wolfram Language to a location unknown to `wolfram-app-discovery`,
 you may specify the installed location manually by setting the `WOLFRAM_APP_DISCOVERY`
@@ -81,8 +81,14 @@ environment variable. See [Configuring wolfram-app-discovery] (**TODO**) for det
 
 #### Related crates
 
-* `wolfram-library-link` — author libraries that can be dynamically loaded by the Wolfram
-  Language
+* [`wolfram-library-link`][wolfram-library-link] — author libraries that can be
+  dynamically loaded by the Wolfram Language
+* [`wolfram-app-discovery`][wolfram-app-discovery] — utility for locating local
+  installations of Wolfram applications and the Wolfram Language.
+
+
+[wolfram-app-discovery]: https://github.com/WolframResearch/wolfram-app-discovery-rs
+[wolfram-library-link]: https://github.com/WolframResearch/wolfram-library-link-rs
 
 #### Related documentation
 
