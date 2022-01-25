@@ -1,6 +1,5 @@
 use std::convert::TryFrom;
 use std::ffi::CString;
-use std::iter::FromIterator;
 
 use crate::{
     sys::{
@@ -164,6 +163,10 @@ impl Link {
         Ok(())
     }
 
+    //==================================
+    // Integer numeric arrays
+    //==================================
+
     /// Put a multidimensional array of [`i64`].
     ///
     /// # Panics
@@ -182,11 +185,7 @@ impl Link {
             "data length does not equal product of dimensions"
         );
 
-        let dimensions: Vec<i32> = Vec::from_iter(
-            dimensions
-                .iter()
-                .map(|&val| i32::try_from(val).expect("i32 overflows usize")),
-        );
+        let dimensions: Vec<i32> = abi_array_dimensions(dimensions)?;
 
         let result = unsafe {
             sys::WSPutInteger64Array(
@@ -204,6 +203,84 @@ impl Link {
 
         Ok(())
     }
+
+    /// Put a multidimensional array of [`i32`].
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the product of `dimensions` is not equal to `data.len()`.
+    ///
+    /// *WSTP C API Documentation:* [`WSPutInteger32Array()`](https://reference.wolfram.com/language/ref/c/WSPutInteger32Array.html)
+    pub fn put_i32_array(
+        &mut self,
+        data: &[i32],
+        dimensions: &[usize],
+    ) -> Result<(), Error> {
+        assert_eq!(
+            data.len(),
+            dimensions.iter().product(),
+            "data length does not equal product of dimensions"
+        );
+
+        let dimensions: Vec<i32> = abi_array_dimensions(dimensions)?;
+
+        let result = unsafe {
+            sys::WSPutInteger32Array(
+                self.raw_link,
+                data.as_ptr(),
+                dimensions.as_ptr(),
+                std::ptr::null_mut(),
+                dimensions.len() as i32,
+            )
+        };
+
+        if result == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        Ok(())
+    }
+
+    /// Put a multidimensional array of [`i16`].
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the product of `dimensions` is not equal to `data.len()`.
+    ///
+    /// *WSTP C API Documentation:* [`WSPutInteger16Array()`](https://reference.wolfram.com/language/ref/c/WSPutInteger16Array.html)
+    pub fn put_i16_array(
+        &mut self,
+        data: &[i16],
+        dimensions: &[usize],
+    ) -> Result<(), Error> {
+        assert_eq!(
+            data.len(),
+            dimensions.iter().product(),
+            "data length does not equal product of dimensions"
+        );
+
+        let dimensions: Vec<i32> = abi_array_dimensions(dimensions)?;
+
+        let result = unsafe {
+            sys::WSPutInteger16Array(
+                self.raw_link,
+                data.as_ptr(),
+                dimensions.as_ptr(),
+                std::ptr::null_mut(),
+                dimensions.len() as i32,
+            )
+        };
+
+        if result == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        Ok(())
+    }
+
+    //==================================
+    // Floating-point numeric arrays
+    //==================================
 
     /// Put a multidimensional array of [`f64`].
     ///
@@ -223,11 +300,7 @@ impl Link {
             "data length does not equal product of dimensions"
         );
 
-        let dimensions: Vec<i32> = Vec::from_iter(
-            dimensions
-                .iter()
-                .map(|&val| i32::try_from(val).expect("i32 overflows usize")),
-        );
+        let dimensions: Vec<i32> = abi_array_dimensions(dimensions)?;
 
         let result = unsafe {
             sys::WSPutReal64Array(
@@ -245,4 +318,66 @@ impl Link {
 
         Ok(())
     }
+
+    /// Put a multidimensional array of [`f32`].
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the product of `dimensions` is not equal to `data.len()`.
+    ///
+    /// *WSTP C API Documentation:* [`WSPutReal32Array()`](https://reference.wolfram.com/language/ref/c/WSPutReal32Array.html)
+    pub fn put_f32_array(
+        &mut self,
+        data: &[f32],
+        dimensions: &[usize],
+    ) -> Result<(), Error> {
+        assert_eq!(
+            data.len(),
+            dimensions.iter().product(),
+            "data length does not equal product of dimensions"
+        );
+
+        let dimensions: Vec<i32> = abi_array_dimensions(dimensions)?;
+
+        let result = unsafe {
+            sys::WSPutReal32Array(
+                self.raw_link,
+                data.as_ptr(),
+                dimensions.as_ptr(),
+                std::ptr::null_mut(),
+                dimensions.len() as i32,
+            )
+        };
+
+        if result == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        Ok(())
+    }
+}
+
+/// Convert `dimensions` to a `Vec<i32>`, which can further be converted to a
+/// *const i32, which is needed when calling the low-level WSTP API functions.
+fn abi_array_dimensions(dimensions: &[usize]) -> Result<Vec<i32>, Error> {
+    let mut i32_dimensions = Vec::with_capacity(dimensions.len());
+
+    for (index, dim) in dimensions.iter().copied().enumerate() {
+        match i32::try_from(dim) {
+            Ok(val) => i32_dimensions.push(val),
+            Err(err) => {
+                // Overflowing the array dimension size should probably never happen in
+                // well-behaved code, but if it does happen, there is probably some subtle
+                // bug, so we should try to emit an error message that is as specific as
+                // possible.
+                return Err(Error::custom(format!(
+                    "in dimensions list {dimensions:?}, the dimension at index {index} \
+                     (value: {dim}) overflows i32: {}; during WSTP array operation.",
+                    err
+                )));
+            },
+        }
+    }
+
+    Ok(i32_dimensions)
 }
