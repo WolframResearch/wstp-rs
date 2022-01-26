@@ -1,4 +1,8 @@
-use std::fmt::{self, Debug, Display};
+use std::{
+    ffi::CStr,
+    fmt::{self, Debug, Display},
+    os::raw::c_char,
+};
 
 /// WSTP link error.
 ///
@@ -26,10 +30,28 @@ impl Error {
     }
 
     pub(crate) fn from_code(code: i32) -> Self {
-        // TODO: Map this to known error codes, provide a better string.
+        // Lookup the error string describing this error code.
+        let message: String = crate::env::stdenv()
+            .ok()
+            .and_then(|stdenv| unsafe {
+                // Note: We do not need to free this, because it's scoped to our eternal
+                //       STDENV instance.
+                let message_cptr: *const c_char =
+                    crate::sys::WSErrorString(stdenv.raw_env, i64::from(code));
+
+                if message_cptr.is_null() {
+                    return None;
+                }
+
+                let message_cstr = CStr::from_ptr(message_cptr);
+
+                Some(message_cstr.to_str().ok()?.to_owned())
+            })
+            .unwrap_or_else(|| format!("WSTP error code {} occurred.", code));
+
         Error {
             code: Some(code),
-            message: format!("WSTP error code {} occurred.", code),
+            message,
         }
     }
 }
