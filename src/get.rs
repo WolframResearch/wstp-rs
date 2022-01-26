@@ -250,6 +250,16 @@ impl Link {
         unsafe { self.get_array(sys::WSGetInteger64Array, sys::WSReleaseInteger64Array) }
     }
 
+    /// *WSTP C API Documentation:* [`WSGetInteger32Array()`](https://reference.wolfram.com/language/ref/c/WSGetInteger32Array.html)
+    pub fn get_i32_array(&mut self) -> Result<Array<i32>, Error> {
+        unsafe { self.get_array(sys::WSGetInteger32Array, sys::WSReleaseInteger32Array) }
+    }
+
+    /// *WSTP C API Documentation:* [`WSGetInteger16Array()`](https://reference.wolfram.com/language/ref/c/WSGetInteger16Array.html)
+    pub fn get_i16_array(&mut self) -> Result<Array<i16>, Error> {
+        unsafe { self.get_array(sys::WSGetInteger16Array, sys::WSReleaseInteger16Array) }
+    }
+
     //==================================
     // Floating-point numeric arrays
     //==================================
@@ -275,6 +285,11 @@ impl Link {
     /// *WSTP C API Documentation:* [`WSGetReal64Array()`](https://reference.wolfram.com/language/ref/c/WSGetReal64Array.html)
     pub fn get_f64_array(&mut self) -> Result<Array<f64>, Error> {
         unsafe { self.get_array(sys::WSGetReal64Array, sys::WSReleaseReal64Array) }
+    }
+
+    /// *WSTP C API Documentation:* [`WSGetReal32Array()`](https://reference.wolfram.com/language/ref/c/WSGetReal32Array.html)
+    pub fn get_f32_array(&mut self) -> Result<Array<f32>, Error> {
+        unsafe { self.get_array(sys::WSGetReal32Array, sys::WSReleaseReal32Array) }
     }
 
     #[allow(non_snake_case)]
@@ -407,7 +422,10 @@ impl<'link> Drop for LinkStr<'link> {
 /// [`Array`] is returned from:
 ///
 /// * [`Link::get_i64_array()`]
+/// * [`Link::get_i32_array()`]
+/// * [`Link::get_i16_array()`]
 /// * [`Link::get_f64_array()`]
+/// * [`Link::get_f32_array()`]
 pub struct Array<'link, T> {
     link: &'link Link,
 
