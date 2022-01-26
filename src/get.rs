@@ -1,6 +1,6 @@
-use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
 use std::iter::FromIterator;
+use std::{convert::TryFrom, os::raw::c_char};
 
 use crate::{
     sys::{
@@ -224,6 +224,10 @@ impl Link {
         Ok(real)
     }
 
+    //==================================
+    // Integer numeric arrays
+    //==================================
+
     /// Get a multidimensional array of [`i64`].
     ///
     /// # Example
@@ -243,51 +247,12 @@ impl Link {
     ///
     /// *WSTP C API Documentation:* [`WSGetInteger64Array()`](https://reference.wolfram.com/language/ref/c/WSGetInteger64Array.html)
     pub fn get_i64_array(&mut self) -> Result<Array<i64>, Error> {
-        let Link { raw_link } = *self;
-
-        let mut data_ptr: *mut i64 = std::ptr::null_mut();
-        let mut dims_ptr: *mut i32 = std::ptr::null_mut();
-        let mut heads_ptr: *mut *mut std::os::raw::c_char = std::ptr::null_mut();
-        let mut depth: i32 = 0;
-
-        let result = unsafe {
-            sys::WSGetInteger64Array(
-                raw_link,
-                &mut data_ptr,
-                &mut dims_ptr,
-                &mut heads_ptr,
-                &mut depth,
-            )
-        };
-
-        if result == 0 {
-            return Err(self.error_or_unknown());
-        }
-
-        let depth =
-            usize::try_from(depth).expect("WSGetInteger64Array depth overflows usize");
-
-        let dims: &[i32] = unsafe { std::slice::from_raw_parts(dims_ptr, depth) };
-        let dims = Vec::from_iter(dims.iter().map(|&val| {
-            usize::try_from(val)
-                .expect("WSGetInteger64Array dimension size overflows usize")
-        }));
-
-        Ok(Array {
-            link: self,
-            data_ptr,
-            release_callback: Box::new(move |link: &Link| unsafe {
-                sys::WSReleaseInteger64Array(
-                    link.raw_link,
-                    data_ptr,
-                    dims_ptr,
-                    heads_ptr,
-                    depth as i32,
-                );
-            }),
-            dimensions: dims,
-        })
+        unsafe { self.get_array(sys::WSGetInteger64Array, sys::WSReleaseInteger64Array) }
     }
+
+    //==================================
+    // Floating-point numeric arrays
+    //==================================
 
     /// Get a multidimensional array of [`f64`].
     ///
@@ -309,15 +274,36 @@ impl Link {
     ///
     /// *WSTP C API Documentation:* [`WSGetReal64Array()`](https://reference.wolfram.com/language/ref/c/WSGetReal64Array.html)
     pub fn get_f64_array(&mut self) -> Result<Array<f64>, Error> {
+        unsafe { self.get_array(sys::WSGetReal64Array, sys::WSReleaseReal64Array) }
+    }
+
+    #[allow(non_snake_case)]
+    unsafe fn get_array<T: 'static>(
+        &mut self,
+        WSGetTArray: unsafe extern "C" fn(
+            sys::WSLINK,
+            *mut *mut T,
+            *mut *mut i32,
+            *mut *mut *mut c_char,
+            *mut i32,
+        ) -> i32,
+        WSReleaseTArray: unsafe extern "C" fn(
+            sys::WSLINK,
+            *mut T,
+            *mut i32,
+            *mut *mut c_char,
+            i32,
+        ),
+    ) -> Result<Array<T>, Error> {
         let Link { raw_link } = *self;
 
-        let mut data_ptr: *mut f64 = std::ptr::null_mut();
+        let mut data_ptr: *mut T = std::ptr::null_mut();
         let mut dims_ptr: *mut i32 = std::ptr::null_mut();
-        let mut heads_ptr: *mut *mut std::os::raw::c_char = std::ptr::null_mut();
+        let mut heads_ptr: *mut *mut c_char = std::ptr::null_mut();
         let mut depth: i32 = 0;
 
-        let result = unsafe {
-            sys::WSGetReal64Array(
+        let result: i32 = {
+            WSGetTArray(
                 raw_link,
                 &mut data_ptr,
                 &mut dims_ptr,
@@ -330,11 +316,11 @@ impl Link {
             return Err(self.error_or_unknown());
         }
 
-        let depth =
-            usize::try_from(depth).expect("WSGetInteger64Array depth overflows usize");
+        let depth: usize =
+            usize::try_from(depth).expect("WSGet*Array depth overflows usize");
 
-        let dims: &[i32] = unsafe { std::slice::from_raw_parts(dims_ptr, depth) };
-        let dims = Vec::from_iter(dims.iter().map(|&val| {
+        let dims: &[i32] = { std::slice::from_raw_parts(dims_ptr, depth) };
+        let dims: Vec<usize> = Vec::from_iter(dims.iter().map(|&val| {
             usize::try_from(val)
                 .expect("WSGetInteger64Array dimension size overflows usize")
         }));
@@ -343,7 +329,7 @@ impl Link {
             link: self,
             data_ptr,
             release_callback: Box::new(move |link: &Link| unsafe {
-                sys::WSReleaseReal64Array(
+                WSReleaseTArray(
                     link.raw_link,
                     data_ptr,
                     dims_ptr,
