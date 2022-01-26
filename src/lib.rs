@@ -255,6 +255,7 @@ impl Link {
 unsafe impl Send for Link {}
 
 /// Transport protocol used to communicate between two [`Link`] end points.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Protocol {
     /// Protocol type optimized for communication between two [`Link`] end points
     /// from within the same OS process.
