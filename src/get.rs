@@ -1,6 +1,6 @@
 use std::ffi::{CStr, CString};
 use std::iter::FromIterator;
-use std::{convert::TryFrom, os::raw::c_char};
+use std::{convert::TryFrom, fmt, os::raw::c_char};
 
 use crate::{
     sys::{
@@ -477,5 +477,26 @@ impl<'link, T> Drop for Array<'link, T> {
         } = *self;
 
         release_callback(link)
+    }
+}
+
+//======================================
+// Formatting impls
+//======================================
+
+impl<'link, T> fmt::Debug for Array<'link, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let Array {
+            link,
+            data_ptr,
+            release_callback: _,
+            dimensions,
+        } = self;
+
+        f.debug_struct("Array")
+            .field("link", link)
+            .field("dimensions", dimensions)
+            .field("data_ptr", data_ptr)
+            .finish()
     }
 }
