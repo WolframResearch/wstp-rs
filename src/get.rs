@@ -260,6 +260,11 @@ impl Link {
         unsafe { self.get_array(sys::WSGetInteger16Array, sys::WSReleaseInteger16Array) }
     }
 
+    /// *WSTP C API Documentation:* [`WSGetInteger8Array()`](https://reference.wolfram.com/language/ref/c/WSGetInteger8Array.html)
+    pub fn get_u8_array(&mut self) -> Result<Array<u8>, Error> {
+        unsafe { self.get_array(sys::WSGetInteger8Array, sys::WSReleaseInteger8Array) }
+    }
+
     //==================================
     // Floating-point numeric arrays
     //==================================
