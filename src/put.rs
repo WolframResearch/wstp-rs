@@ -278,6 +278,37 @@ impl Link {
         Ok(())
     }
 
+    /// *WSTP C API Documentation:* [`WSPutInteger8Array()`](https://reference.wolfram.com/language/ref/c/WSPutInteger8Array.html)
+    pub fn put_u8_array(
+        &mut self,
+        data: &[u8],
+        dimensions: &[usize],
+    ) -> Result<(), Error> {
+        assert_eq!(
+            data.len(),
+            dimensions.iter().product(),
+            "data length does not equal product of dimensions"
+        );
+
+        let dimensions: Vec<i32> = abi_array_dimensions(dimensions)?;
+
+        let result = unsafe {
+            sys::WSPutInteger8Array(
+                self.raw_link,
+                data.as_ptr(),
+                dimensions.as_ptr(),
+                std::ptr::null_mut(),
+                dimensions.len() as i32,
+            )
+        };
+
+        if result == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        Ok(())
+    }
+
     //==================================
     // Floating-point numeric arrays
     //==================================
