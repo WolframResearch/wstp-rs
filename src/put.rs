@@ -3,8 +3,8 @@ use std::ffi::CString;
 
 use crate::{
     sys::{
-        self, WSPutArgCount, WSPutInteger64, WSPutReal64, WSPutUTF8String,
-        WSPutUTF8Symbol,
+        self, WSPutArgCount, WSPutInteger16, WSPutInteger32, WSPutInteger64,
+        WSPutInteger8, WSPutReal32, WSPutReal64, WSPutUTF8String, WSPutUTF8Symbol,
     },
     Error, Link,
 };
@@ -155,9 +155,49 @@ impl Link {
         Ok(())
     }
 
+    /// *WSTP C API Documentation:* [`WSPutInteger32()`](https://reference.wolfram.com/language/ref/c/WSPutInteger32.html)
+    pub fn put_i32(&mut self, value: i32) -> Result<(), Error> {
+        if unsafe { WSPutInteger32(self.raw_link, value) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+        Ok(())
+    }
+
+    /// *WSTP C API Documentation:* [`WSPutInteger16()`](https://reference.wolfram.com/language/ref/c/WSPutInteger16.html)
+    pub fn put_i16(&mut self, value: i16) -> Result<(), Error> {
+        // Note: This conversion is necessary due to the declaration of WSPutInteger16,
+        //       which takes an int for legacy reasons.
+        let value = i32::from(value);
+
+        if unsafe { WSPutInteger16(self.raw_link, value) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+        Ok(())
+    }
+
+    /// *WSTP C API Documentation:* [`WSPutInteger8()`](https://reference.wolfram.com/language/ref/c/WSPutInteger8.html)
+    pub fn put_u8(&mut self, value: u8) -> Result<(), Error> {
+        if unsafe { WSPutInteger8(self.raw_link, value) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+        Ok(())
+    }
+
     /// *WSTP C API Documentation:* [`WSPutReal64()`](https://reference.wolfram.com/language/ref/c/WSPutReal64.html)
     pub fn put_f64(&mut self, value: f64) -> Result<(), Error> {
         if unsafe { WSPutReal64(self.raw_link, value) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+        Ok(())
+    }
+
+    /// *WSTP C API Documentation:* [`WSPutReal32()`](https://reference.wolfram.com/language/ref/c/WSPutReal32.html)
+    pub fn put_f32(&mut self, value: f32) -> Result<(), Error> {
+        // Note: This conversion is necessary due to the declaration of WSPutReal32,
+        //       which takes a double for legacy reasons.
+        let value = f64::from(value);
+
+        if unsafe { WSPutReal32(self.raw_link, value) } == 0 {
             return Err(self.error_or_unknown());
         }
         Ok(())

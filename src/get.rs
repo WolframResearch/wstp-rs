@@ -4,8 +4,9 @@ use std::{convert::TryFrom, fmt, os::raw::c_char};
 
 use crate::{
     sys::{
-        self, WSGetArgCount, WSGetInteger64, WSGetReal64, WSGetUTF8String,
-        WSReleaseString, WSReleaseSymbol,
+        self, WSGetArgCount, WSGetInteger16, WSGetInteger32, WSGetInteger64,
+        WSGetInteger8, WSGetReal32, WSGetReal64, WSGetUTF8String, WSReleaseString,
+        WSReleaseSymbol,
     },
     Error, Link,
 };
@@ -215,10 +216,46 @@ impl Link {
         Ok(int)
     }
 
+    /// *WSTP C API Documentation:* [`WSGetInteger32()`](https://reference.wolfram.com/language/ref/c/WSGetInteger32.html)
+    pub fn get_i32(&mut self) -> Result<i32, Error> {
+        let mut int = 0;
+        if unsafe { WSGetInteger32(self.raw_link, &mut int) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+        Ok(int)
+    }
+
+    /// *WSTP C API Documentation:* [`WSGetInteger16()`](https://reference.wolfram.com/language/ref/c/WSGetInteger16.html)
+    pub fn get_i16(&mut self) -> Result<i16, Error> {
+        let mut int = 0;
+        if unsafe { WSGetInteger16(self.raw_link, &mut int) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+        Ok(int)
+    }
+
+    /// *WSTP C API Documentation:* [`WSGetInteger8()`](https://reference.wolfram.com/language/ref/c/WSGetInteger8.html)
+    pub fn get_u8(&mut self) -> Result<u8, Error> {
+        let mut int = 0;
+        if unsafe { WSGetInteger8(self.raw_link, &mut int) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+        Ok(int)
+    }
+
     /// *WSTP C API Documentation:* [`WSGetReal64()`](https://reference.wolfram.com/language/ref/c/WSGetReal64.html)
     pub fn get_f64(&mut self) -> Result<f64, Error> {
         let mut real: f64 = 0.0;
         if unsafe { WSGetReal64(self.raw_link, &mut real) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+        Ok(real)
+    }
+
+    /// *WSTP C API Documentation:* [`WSGetReal32()`](https://reference.wolfram.com/language/ref/c/WSGetReal32.html)
+    pub fn get_f32(&mut self) -> Result<f32, Error> {
+        let mut real: f32 = 0.0;
+        if unsafe { WSGetReal32(self.raw_link, &mut real) } == 0 {
             return Err(self.error_or_unknown());
         }
         Ok(real)
