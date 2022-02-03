@@ -5,8 +5,8 @@ use std::{convert::TryFrom, fmt, os::raw::c_char};
 use crate::{
     sys::{
         self, WSGetArgCount, WSGetInteger16, WSGetInteger32, WSGetInteger64,
-        WSGetInteger8, WSGetReal32, WSGetReal64, WSGetUTF8String, WSReleaseString,
-        WSReleaseSymbol,
+        WSGetInteger8, WSGetReal32, WSGetReal64, WSGetUTF8String, WSReleaseUTF8String,
+        WSReleaseUTF8Symbol,
     },
     Error, Link,
 };
@@ -53,7 +53,12 @@ pub unsafe trait LinkStrType {
 
     unsafe fn from_slice_unchecked<'s>(slice: &'s [Self::Element]) -> &'s Self;
 
-    unsafe fn release(link: &Link, ptr: *const Self::Element, is_symbol: bool);
+    unsafe fn release(
+        link: &Link,
+        ptr: *const Self::Element,
+        len: usize,
+        is_symbol: bool,
+    );
 }
 
 //======================================
@@ -479,11 +484,11 @@ impl<'link, T: ?Sized + LinkStrType> Drop for LinkStr<'link, T> {
         let LinkStr {
             link,
             ptr,
-            length: _,
+            length,
             is_symbol,
         } = *self;
 
-        let () = unsafe { T::release(link, ptr, is_symbol) };
+        let () = unsafe { T::release(link, ptr, length, is_symbol) };
     }
 }
 
@@ -499,13 +504,18 @@ unsafe impl LinkStrType for str {
         str
     }
 
-    unsafe fn release(link: &Link, ptr: *const Self::Element, is_symbol: bool) {
-        let ptr: *const c_char = ptr as *const _;
+    unsafe fn release(
+        link: &Link,
+        ptr: *const Self::Element,
+        len: usize,
+        is_symbol: bool,
+    ) {
+        let len = i32::try_from(len).expect("LinkStr usize length overflows i32");
 
         // Deallocate the string data.
         match is_symbol {
-            true => WSReleaseSymbol(link.raw_link, ptr),
-            false => WSReleaseString(link.raw_link, ptr),
+            true => WSReleaseUTF8Symbol(link.raw_link, ptr, len),
+            false => WSReleaseUTF8String(link.raw_link, ptr, len),
         }
     }
 }
