@@ -18,15 +18,29 @@ use crate::{
 /// When [`LinkStr::drop()`] is called, `WSReleaseString()` is used to deallocate the
 /// underlying string.
 #[derive(Debug)]
-pub struct LinkStr<'link> {
+pub struct LinkStr<'link, T: LinkStrType + ?Sized = str> {
     link: &'link Link,
-    // Note: See `LinkStr::to_str()` for discussion of the safety reasons we *don't* store
-    //       a `&str` field (even though that would have the benefit of paying the UTF-8
-    //       validation penalty only once).
-    c_string: *const u8,
-    byte_length: usize,
+
+    /// See [`LinkStr::get()`] for discussion of the safety reasons we *don't* store
+    /// a `&[T::Element]` field.
+    ptr: *const T::Element,
+    length: usize,
+
+    // Needed to control whether `WSReleaseString` or `WSReleaseSymbol` is called.
     is_symbol: bool,
 }
+
+pub unsafe trait LinkStrType {
+    type Element;
+
+    unsafe fn from_slice_unchecked<'s>(slice: &'s [Self::Element]) -> &'s Self;
+
+    unsafe fn release(link: &Link, ptr: *const Self::Element, is_symbol: bool);
+}
+
+//======================================
+// Impls
+//======================================
 
 impl Link {
     /// TODO: Augment this function with a `get_type()` method which returns a
@@ -61,7 +75,7 @@ impl Link {
     //         WSClose()?).
 
     /// *WSTP C API Documentation:* [`WSGetUTF8String()`](https://reference.wolfram.com/language/ref/c/WSGetUTF8String.html)
-    pub fn get_string_ref<'link>(&'link mut self) -> Result<LinkStr<'link>, Error> {
+    pub fn get_string_ref<'link>(&'link mut self) -> Result<LinkStr<'link, str>, Error> {
         let mut c_string: *const u8 = std::ptr::null();
         let mut num_bytes: i32 = 0;
         let mut num_chars = 0;
@@ -79,20 +93,19 @@ impl Link {
 
         Ok(LinkStr {
             link: self,
-            c_string,
-            byte_length: num_bytes,
-            // Needed to control whether `WSReleaseString` or `WSReleaseSymbol` is called.
+            ptr: c_string,
+            length: num_bytes,
             is_symbol: false,
         })
     }
 
     /// Convenience wrapper around [`Link::get_string_ref()`].
     pub fn get_string(&mut self) -> Result<String, Error> {
-        Ok(self.get_string_ref()?.to_str().to_owned())
+        Ok(self.get_string_ref()?.get().to_owned())
     }
 
     /// *WSTP C API Documentation:* [`WSGetUTF8Symbol()`](https://reference.wolfram.com/language/ref/c/WSGetUTF8Symbol.html)
-    pub fn get_symbol_ref<'link>(&'link mut self) -> Result<LinkStr<'link>, Error> {
+    pub fn get_symbol_ref<'link>(&'link mut self) -> Result<LinkStr<'link, str>, Error> {
         let mut c_string: *const u8 = std::ptr::null();
         let mut num_bytes: i32 = 0;
         let mut num_chars = 0;
@@ -115,9 +128,8 @@ impl Link {
 
         Ok(LinkStr {
             link: self,
-            c_string,
-            byte_length: num_bytes,
-            // Needed to control whether `WSReleaseString` or `WSReleaseSymbol` is called.
+            ptr: c_string,
+            length: num_bytes,
             is_symbol: true,
         })
     }
@@ -399,61 +411,77 @@ impl Link {
     }
 }
 
-
-impl<'link> LinkStr<'link> {
-    /// Get the UTF-8 string data.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if the contents of the string are not valid UTF-8.
-    pub fn to_str<'s>(&'s self) -> &'s str {
-        self.try_to_str().expect("WSTP returned non-UTF-8 string")
-    }
-
-    #[allow(missing_docs)]
-    pub fn try_to_str<'s>(&'s self) -> Result<&'s str, std::str::Utf8Error> {
+impl<'link, T: LinkStrType + ?Sized> LinkStr<'link, T> {
+    /// Get the string data contained by this `LinkStr`.
+    pub fn get<'this>(&'this self) -> &'this T {
         let LinkStr {
             link: _,
-            c_string,
-            byte_length,
+            ptr,
+            length,
             is_symbol: _,
         } = *self;
 
-        // Safety: Assert this pre-condition of `slice::from_raw_parts()`.
-        assert!(byte_length < usize::try_from(isize::MAX).unwrap());
+        unsafe {
+            // SAFETY:
+            //     It is important that the lifetime of `slice` is tied to `self` and NOT
+            //     to 'link. A `&'link str` could outlive the `LinkStr` object, which
+            //     would lead to a a use-after-free bug because the string data is
+            //     deallocated when `LinkStr` is dropped.
+            let slice: &'this [T::Element] = std::slice::from_raw_parts(ptr, length);
 
-        // SAFETY:
-        //     It is important that the lifetime of `bytes` is tied to `self` and NOT to
-        //     'link. A `&'link str` could outlive the `LinkStr` object, which would lead
-        //     to a a use-after-free bug because the string data is deallocated when
-        //     `LinkStr` is dropped.
-        let bytes: &'s [u8] =
-            unsafe { std::slice::from_raw_parts(c_string, byte_length) };
-
-        // TODO: Optimization: Do we trust WSTP enough to always produce valid UTF-8 to
-        //       use `str::from_utf8_unchecked()` here? If a client writes malformed data
-        //       with WSPutUTF8String, does WSTP validate it and return an error, or would
-        //       it be passed through to unsuspecting us?
-        // This function will panic if `c_string` is not valid UTF-8.
-        std::str::from_utf8(bytes)
+            // SAFETY:
+            //     This depends on the assumption that WSTP always returns correctly
+            //     encoded UTF-8/UTF-16/UTF-32/UCS-2. We do not do any validation of
+            //     the encoding here.
+            //
+            // TODO: Do we trust WSTP enough to always produce valid UTF-8 to
+            //       use `str::from_utf8_unchecked()` here? If a client writes malformed
+            //       data with WSPutUTF8String, does WSTP validate it and return an error,
+            //       or would it be passed through to unsuspecting us?
+            T::from_slice_unchecked(slice)
+        }
     }
 }
 
-impl<'link> Drop for LinkStr<'link> {
+impl<'link> LinkStr<'link, str> {
+    /// Get the UTF-8 string data.
+    pub fn to_str<'s>(&'s self) -> &'s str {
+        self.get()
+    }
+}
+
+impl<'link, T: ?Sized + LinkStrType> Drop for LinkStr<'link, T> {
     fn drop(&mut self) {
         let LinkStr {
             link,
-            c_string,
-            byte_length: _,
+            ptr,
+            length: _,
             is_symbol,
         } = *self;
 
-        let c_string = c_string as *const i8;
+        let () = unsafe { T::release(link, ptr, is_symbol) };
+    }
+}
+
+//======================================
+// LinkStrType impls
+//======================================
+
+unsafe impl LinkStrType for str {
+    type Element = u8;
+
+    unsafe fn from_slice_unchecked<'s>(slice: &'s [Self::Element]) -> &'s Self {
+        let str: &'s str = std::str::from_utf8_unchecked(slice);
+        str
+    }
+
+    unsafe fn release(link: &Link, ptr: *const Self::Element, is_symbol: bool) {
+        let ptr: *const c_char = ptr as *const _;
 
         // Deallocate the string data.
         match is_symbol {
-            true => unsafe { WSReleaseSymbol(link.raw_link, c_string) },
-            false => unsafe { WSReleaseString(link.raw_link, c_string) },
+            true => WSReleaseSymbol(link.raw_link, ptr),
+            false => WSReleaseString(link.raw_link, ptr),
         }
     }
 }
