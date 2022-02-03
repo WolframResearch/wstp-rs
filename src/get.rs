@@ -11,12 +11,30 @@ use crate::{
     Error, Link,
 };
 
-/// Reference to string data borrowed from a [`Link`].
+/// String data borrowed from a [`Link`].
 ///
-/// `LinkStr` is returned from [`Link::get_string_ref()`] and [`Link::get_symbol_ref()`].
+/// `LinkStr` is returned from:
 ///
-/// When [`LinkStr::drop()`] is called, `WSReleaseString()` is used to deallocate the
-/// underlying string.
+/// * [`Link::get_string_ref()`]
+/// * [`Link::get_symbol_ref()`].
+///
+/// When `LinkStr` is dropped, the string is deallocated by the `Link`.
+///
+/// # Example
+///
+/// ```
+/// use wstp::{Link, LinkStr};
+///
+/// let mut link = Link::new_loopback().unwrap();
+///
+/// link.put_str("hello world").unwrap();
+///
+/// // Read a string from the link
+/// let string: LinkStr = link.get_string_ref().unwrap();
+///
+/// // Get a `&str` from the `LinkStr`
+/// assert_eq!(string.as_str(), "hello world");
+/// ```
 #[derive(Debug)]
 pub struct LinkStr<'link, T: LinkStrType + ?Sized = str> {
     link: &'link Link,
