@@ -11,7 +11,7 @@ use crate::{
     Error, Link,
 };
 
-/// String data borrowed from a [`Link`].
+/// String borrowed from a [`Link`].
 ///
 /// `LinkStr` is returned from:
 ///
@@ -430,7 +430,7 @@ impl Link {
 }
 
 impl<'link, T: LinkStrType + ?Sized> LinkStr<'link, T> {
-    /// Get the string data contained by this `LinkStr`.
+    /// Get the string contained by this `LinkStr`.
     pub fn get<'this>(&'this self) -> &'this T {
         let LinkStr {
             link: _,
