@@ -445,6 +445,12 @@ impl<'link, T: LinkStrType + ?Sized> LinkStr<'link, T> {
 
 impl<'link> LinkStr<'link, str> {
     /// Get the UTF-8 string data.
+    pub fn as_str<'s>(&'s self) -> &'s str {
+        self.get()
+    }
+
+    /// Get the UTF-8 string data.
+    #[deprecated(note = "Use LinkStr::as_str() instead")]
     pub fn to_str<'s>(&'s self) -> &'s str {
         self.get()
     }

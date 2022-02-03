@@ -768,10 +768,10 @@ fn get_expr(link: &mut Link) -> Result<Expr, Error> {
             };
             Expr::number(Number::Real(real))
         },
-        WSTKSTR => Expr::string(link.get_string_ref()?.to_str()),
+        WSTKSTR => Expr::string(link.get_string_ref()?.as_str()),
         WSTKSYM => {
             let symbol_link_str = link.get_symbol_ref()?;
-            let symbol_str = symbol_link_str.to_str();
+            let symbol_str = symbol_link_str.as_str();
 
             let symbol: Symbol = match Symbol::try_new(symbol_str) {
                 Some(sym) => sym,
