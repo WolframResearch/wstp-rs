@@ -143,6 +143,8 @@ mod wait;
 mod get;
 mod put;
 
+mod strx;
+
 /// Ensure that doc tests in the README.md file get run.
 #[doc(hidden)]
 mod test_readme {
@@ -172,6 +174,7 @@ pub use crate::{
     error::Error,
     get::{Array, LinkStr},
     link_server::LinkServer,
+    strx::{Ucs2Str, Utf16Str, Utf32Str, Utf8Str},
 };
 
 // TODO: Make this function public from `wstp`?
