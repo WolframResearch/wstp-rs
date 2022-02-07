@@ -5,10 +5,12 @@ use std::{convert::TryFrom, fmt, os::raw::c_char};
 use crate::{
     sys::{
         self, WSGetArgCount, WSGetInteger16, WSGetInteger32, WSGetInteger64,
-        WSGetInteger8, WSGetReal32, WSGetReal64, WSGetUTF8String, WSReleaseUTF8String,
+        WSGetInteger8, WSGetReal32, WSGetReal64, WSGetUTF16String, WSGetUTF32String,
+        WSGetUTF8String, WSReleaseUTF16String, WSReleaseUTF16Symbol,
+        WSReleaseUTF32String, WSReleaseUTF32Symbol, WSReleaseUTF8String,
         WSReleaseUTF8Symbol,
     },
-    Error, Link,
+    Error, Link, Utf16Str, Utf32Str, Utf8Str,
 };
 
 /// String borrowed from a [`Link`].
@@ -154,6 +156,94 @@ impl Link {
             ptr: c_string,
             length: num_bytes,
             is_symbol: true,
+        })
+    }
+
+    //==================================
+    // Strings
+    //==================================
+
+    /// *WSTP C API Documentation:* [`WSGetUTF8String()`](https://reference.wolfram.com/language/ref/c/WSGetUTF8String.html)
+    pub fn get_utf8_str<'link>(
+        &'link mut self,
+    ) -> Result<LinkStr<'link, Utf8Str>, Error> {
+        let mut c_string: *const u8 = std::ptr::null();
+        let mut num_bytes: i32 = 0;
+        let mut num_chars = 0;
+
+        if unsafe {
+            WSGetUTF8String(self.raw_link, &mut c_string, &mut num_bytes, &mut num_chars)
+        } == 0
+        {
+            // NOTE: According to the documentation, we do NOT have to release
+            //      `string` if the function returns an error.
+            return Err(self.error_or_unknown());
+        }
+
+        let num_bytes = usize::try_from(num_bytes).unwrap();
+
+        Ok(LinkStr {
+            link: self,
+
+            ptr: c_string,
+            length: num_bytes,
+
+            is_symbol: false,
+        })
+    }
+
+    /// *WSTP C API Documentation:* [`WSGetUTF16String()`](https://reference.wolfram.com/language/ref/c/WSGetUTF16String.html)
+    pub fn get_utf16_str<'link>(
+        &'link mut self,
+    ) -> Result<LinkStr<'link, Utf16Str>, Error> {
+        let mut c_string: *const u16 = std::ptr::null();
+        let mut num_elems: i32 = 0;
+        let mut num_chars = 0;
+
+        if unsafe {
+            WSGetUTF16String(self.raw_link, &mut c_string, &mut num_elems, &mut num_chars)
+        } == 0
+        {
+            // NOTE: According to the documentation, we do NOT have to release
+            //      `string` if the function returns an error.
+            return Err(self.error_or_unknown());
+        }
+
+        let num_elems = usize::try_from(num_elems).unwrap();
+
+        Ok(LinkStr {
+            link: self,
+
+            ptr: c_string,
+            length: num_elems,
+
+            is_symbol: false,
+        })
+    }
+
+    /// *WSTP C API Documentation:* [`WSGetUTF32String()`](https://reference.wolfram.com/language/ref/c/WSGetUTF32String.html)
+    pub fn get_utf32_str<'link>(
+        &'link mut self,
+    ) -> Result<LinkStr<'link, Utf32Str>, Error> {
+        let mut c_string: *const u32 = std::ptr::null();
+        let mut num_elems: i32 = 0;
+
+        if unsafe { WSGetUTF32String(self.raw_link, &mut c_string, &mut num_elems) } == 0
+        {
+            // NOTE: According to the documentation, we do NOT have to release
+            //      `string` if the function returns an error.
+            return Err(self.error_or_unknown());
+        }
+
+        let num_elems = usize::try_from(num_elems).unwrap();
+
+        Ok(LinkStr {
+            link: self,
+
+            ptr: c_string,
+            length: num_elems,
+
+            is_symbol: false,
         })
     }
 
@@ -516,6 +606,81 @@ unsafe impl LinkStrType for str {
         match is_symbol {
             true => WSReleaseUTF8Symbol(link.raw_link, ptr, len),
             false => WSReleaseUTF8String(link.raw_link, ptr, len),
+        }
+    }
+}
+
+unsafe impl LinkStrType for Utf8Str {
+    type Element = u8;
+
+    // unsafe fn from_raw_parts_unchecked<'s>(ptr: *const u8, len: usize) -> &'s Self {
+    unsafe fn from_slice_unchecked<'s>(slice: &'s [Self::Element]) -> &'s Self {
+        let str: &'s Utf8Str = Utf8Str::from_utf8_unchecked(slice);
+        str
+    }
+
+    unsafe fn release(
+        link: &Link,
+        ptr: *const Self::Element,
+        len: usize,
+        is_symbol: bool,
+    ) {
+        let len = i32::try_from(len).expect("LinkStr usize length overflows i32");
+
+        // Deallocate the string data.
+        match is_symbol {
+            true => WSReleaseUTF8Symbol(link.raw_link, ptr, len),
+            false => WSReleaseUTF8String(link.raw_link, ptr, len),
+        }
+    }
+}
+
+unsafe impl LinkStrType for Utf16Str {
+    type Element = u16;
+
+    // unsafe fn from_raw_parts_unchecked<'s>(ptr: *const u8, len: usize) -> &'s Self {
+    unsafe fn from_slice_unchecked<'s>(slice: &'s [Self::Element]) -> &'s Self {
+        let str: &'s Utf16Str = Utf16Str::from_utf16_unchecked(slice);
+        str
+    }
+
+    unsafe fn release(
+        link: &Link,
+        ptr: *const Self::Element,
+        len: usize,
+        is_symbol: bool,
+    ) {
+        let len = i32::try_from(len).expect("LinkStr usize length overflows i32");
+
+        // Deallocate the string data.
+        match is_symbol {
+            true => WSReleaseUTF16Symbol(link.raw_link, ptr, len),
+            false => WSReleaseUTF16String(link.raw_link, ptr, len),
+        }
+    }
+}
+
+unsafe impl LinkStrType for Utf32Str {
+    type Element = u32;
+
+    // unsafe fn from_raw_parts_unchecked<'s>(ptr: *const u8, len: usize) -> &'s Self {
+    unsafe fn from_slice_unchecked<'s>(slice: &'s [Self::Element]) -> &'s Self {
+        let str: &'s Utf32Str = Utf32Str::from_utf32_unchecked(slice);
+        str
+    }
+
+    unsafe fn release(
+        link: &Link,
+        ptr: *const Self::Element,
+        len: usize,
+        is_symbol: bool,
+    ) {
+        let len = i32::try_from(len).expect("LinkStr usize length overflows i32");
+
+        // Deallocate the string data.
+        match is_symbol {
+            true => WSReleaseUTF32Symbol(link.raw_link, ptr, len),
+            false => WSReleaseUTF32String(link.raw_link, ptr, len),
         }
     }
 }
