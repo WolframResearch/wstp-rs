@@ -4,7 +4,8 @@ use std::ffi::CString;
 use crate::{
     sys::{
         self, WSPutArgCount, WSPutInteger16, WSPutInteger32, WSPutInteger64,
-        WSPutInteger8, WSPutReal32, WSPutReal64, WSPutUTF8String, WSPutUTF8Symbol,
+        WSPutInteger8, WSPutReal32, WSPutReal64, WSPutUTF16String, WSPutUTF32String,
+        WSPutUTF8String, WSPutUTF8Symbol,
     },
     Error, Link,
 };
@@ -66,6 +67,54 @@ impl Link {
             return Err(self.error_or_unknown());
         }
 
+        Ok(())
+    }
+
+    //==================================
+    // Strings
+    //==================================
+
+    /// *WSTP C API Documentation:* [`WSPutUTF8String()`](https://reference.wolfram.com/language/ref/c/WSPutUTF8String.html)
+    ///
+    /// This function will return a WSTP error if `utf8` is not a valid UTF-8 encoded
+    /// string.
+    pub fn put_utf8_str(&mut self, utf8: &[u8]) -> Result<(), Error> {
+        let len = i32::try_from(utf8.len()).expect("usize overflows i32");
+
+        if unsafe { WSPutUTF8String(self.raw_link, utf8.as_ptr(), len) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+        Ok(())
+    }
+
+    /// Put a UTF-16 encoded string.
+    ///
+    /// This function will return a WSTP error if `utf16` is not a valid UTF-16 encoded
+    /// string.
+    ///
+    /// *WSTP C API Documentation:* [`WSPutUTF16String()`](https://reference.wolfram.com/language/ref/c/WSPutUTF16String.html)
+    ///
+    pub fn put_utf16_str(&mut self, utf16: &[u16]) -> Result<(), Error> {
+        let len = i32::try_from(utf16.len()).expect("usize overflows i32");
+
+        if unsafe { WSPutUTF16String(self.raw_link, utf16.as_ptr(), len) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+        Ok(())
+    }
+
+    /// Put a UTF-32 encoded string.
+    ///
+    /// This function will return a WSTP error if `utf32` is not a valid UTF-32 encoded
+    /// string.
+    ///
+    /// *WSTP C API Documentation:* [`WSPutUTF32String()`](https://reference.wolfram.com/language/ref/c/WSPutUTF32String.html)
+    pub fn put_utf32_str(&mut self, utf32: &[u32]) -> Result<(), Error> {
+        let len = i32::try_from(utf32.len()).expect("usize overflows i32");
+
+        if unsafe { WSPutUTF32String(self.raw_link, utf32.as_ptr(), len) } == 0 {
+            return Err(self.error_or_unknown());
+        }
         Ok(())
     }
 
