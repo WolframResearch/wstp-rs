@@ -3,7 +3,11 @@
 // Note: This file is designed to be separate from the `wstp` crate. In theory, it could
 //       (and perhaps should) be an independent crate.
 
-use std::mem;
+use std::{
+    char::DecodeUtf16Error,
+    fmt::{self, Display},
+    mem,
+};
 
 /// UTF-8 string slice.
 ///
@@ -88,6 +92,16 @@ impl Utf8Str {
 //--------------------------------------
 
 impl Utf16Str {
+    /// Convert a slice of [`u16`] to a UTF-16 string slice.
+    pub fn from_utf16(utf16: &[u16]) -> Result<&Utf16Str, DecodeUtf16Error> {
+        // Verify that `utf16` succcessfully decodes as valid UTF-16.
+        for result in char::decode_utf16(utf16.iter().copied()) {
+            let _: char = result?;
+        }
+
+        Ok(unsafe { Utf16Str::from_utf16_unchecked(utf16) })
+    }
+
     /// Converts a slice of bytes to a `Utf16` without validating that the slice
     /// contains valid UTF-8 encoded data.
     pub unsafe fn from_utf16_unchecked(utf16: &[u16]) -> &Utf16Str {
@@ -127,4 +141,78 @@ impl Utf32Str {
         let Utf32Str(slice) = self;
         slice
     }
+}
+
+//======================================
+// Display Impls
+//======================================
+
+impl Display for Utf8Str {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(self.as_str(), f)
+    }
+}
+
+impl Display for Utf16Str {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let Utf16Str(slice) = self;
+
+        for char in char::decode_utf16(slice.into_iter().copied()) {
+            let char: char = match char {
+                Ok(char) => char,
+                Err(err) => panic!("Utf16Str could not be decoded: {err}"),
+            };
+            let () = Display::fmt(&char, f)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl Display for Utf32Str {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let Utf32Str(slice) = self;
+
+        for char_u32 in slice.into_iter().copied() {
+            let char: char = match char::from_u32(char_u32) {
+                Some(char) => char,
+                None => panic!("Utf32Str code point is not a valid `char`: {char_u32}"),
+            };
+            let () = Display::fmt(&char, f)?;
+        }
+
+        Ok(())
+    }
+}
+
+//------------------
+// Display tests
+//------------------
+
+#[test]
+fn test_utf8_str_display() {
+    assert_eq!(
+        format!("{}", Utf8Str::from_str("hello 👋")),
+        String::from("hello 👋")
+    );
+}
+
+
+#[test]
+fn test_utf16_str_display() {
+    let utf16: Vec<u16> = "hello 👋".encode_utf16().collect();
+    let utf16: &Utf16Str = Utf16Str::from_utf16(&utf16).unwrap();
+
+    assert_eq!(format!("{}", utf16), String::from("hello 👋"));
+}
+
+#[test]
+fn test_utf32_str_display() {
+    let utf32: Vec<u32> = "hello 👋"
+        .chars()
+        .map(|char: char| u32::from(char))
+        .collect();
+    let utf32: &Utf32Str = unsafe { Utf32Str::from_utf32_unchecked(&utf32) };
+
+    assert_eq!(format!("{}", utf32), String::from("hello 👋"));
 }
