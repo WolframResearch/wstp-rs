@@ -7,7 +7,7 @@
 //!
 //! ### Loopback links
 //!
-//! Write an expression to a loopback link, and then read it back from the same link
+//! Write an expression to a loopback [`Link`], and then read it back from the same link
 //! object:
 //!
 //! ```
