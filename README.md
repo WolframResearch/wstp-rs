@@ -1,5 +1,17 @@
 # wstp
 
+[![Crates.io](https://img.shields.io/crates/v/wstp.svg)](https://crates.io/crates/wstp)
+![License](https://img.shields.io/crates/l/wstp.svg)
+[![Documentation](https://docs.rs/wstp/badge.svg)](https://docs.rs/wstp)
+
+<h4>
+  <a href="https://docs.rs/wstp">API Documentation</a>
+  <span> | </span>
+  <a href="https://github.com/WolframResearch/wstp-rs/blob/master/docs/CHANGELOG.md">Changelog</a>
+  <span> | </span>
+  <a href="https://github.com/WolframResearch/wstp-rs/blob/master/docs/CONTRIBUTING.md">Contributing</a>
+</h4>
+
 Bindings to the [Wolfram Symbolic Transfer Protocol (WSTP)](https://www.wolfram.com/wstp/).
 
 This crate provides a set of safe and ergonomic bindings to the WSTP library, used to
@@ -85,12 +97,15 @@ environment variable. See [Configuring wolfram-app-discovery] (**TODO**) for det
 
 * [`wolfram-library-link`][wolfram-library-link] — author libraries that can be
   dynamically loaded by the Wolfram Language
+* [`wolfram-expr`][wolfram-expr] — efficient and ergonomic representation of Wolfram
+  expressions in Rust.
 * [`wolfram-app-discovery`][wolfram-app-discovery] — utility for locating local
   installations of Wolfram applications and the Wolfram Language.
 
 
-[wolfram-app-discovery]: https://github.com/WolframResearch/wolfram-app-discovery-rs
-[wolfram-library-link]: https://github.com/WolframResearch/wolfram-library-link-rs
+[wolfram-app-discovery]: https://crates.io/wolfram-app-discovery
+[wolfram-library-link]: https://crates.io/wolfram-library-link
+[wolfram-expr]: https://crates.io/wolfram-expr
 
 #### Related documentation
 
