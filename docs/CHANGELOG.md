@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] – 2022-02-08
+
+### Fixed
+
+* Increase `wolfram-app-discovery` dependency version from v0.1.1 to v0.1.2 to get fix
+  for [compilation error when compiling for non-macOS targets](https://github.com/WolframResearch/wolfram-app-discovery-rs/blob/master/docs/CHANGELOG.md#012--2022-02-08)
+
 ## [0.1.0] – 2022-02-08
 
 Initial release of the [`wstp`](https://crates.io/crates/wstp) crate.
