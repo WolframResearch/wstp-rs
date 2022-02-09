@@ -1,7 +1,6 @@
 # wstp
 
-Bindings to the [Wolfram Symbolic Transfer Protocol (WSTP)](https://www.wolfram.com/wstp/)
-library.
+Bindings to the [Wolfram Symbolic Transfer Protocol (WSTP)](https://www.wolfram.com/wstp/).
 
 This crate provides a set of safe and ergonomic bindings to the WSTP library, used to
 transfer Wolfram Language expressions between programs.
