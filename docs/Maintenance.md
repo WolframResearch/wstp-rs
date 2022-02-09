@@ -22,3 +22,12 @@ $ cargo make gen-bindings
 
 using an appropriate path to the Wolfram product providing the new Wolfram Language
 version.
+
+## Updating build.rs bindings to use on docs.rs
+
+When `wstp-sys` is built in the <docs.rs> environment, some special logic is required
+to work around the fact that no Wolfram applications are available to link to.
+
+At the moment, the [`wstp-sys/build.rs`](../wstp-sys/build.rs) file hard-codes a Wolfram
+version number and System ID to use as the bindings to display on docs.rs. That version
+number should be updated each time new `wstp-sys` bindings are generated.

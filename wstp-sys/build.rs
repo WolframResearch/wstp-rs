@@ -14,6 +14,19 @@ fn main() {
     // This crate is being built by docs.rs. Skip trying to locate a WolframApp.
     // See: https://docs.rs/about/builds#detecting-docsrs
     if std::env::var("DOCS_RS").is_ok() {
+        // Force docs.rs to use the bindings generated for this version / system.
+        let bindings_path = make_bindings_path(
+            "13.0.0",
+            "MacOSX-x86-64"
+        );
+
+        // This environment variable is included using `env!()`. wstp-sys will fail to
+        // build if it is not set correctly.
+        println!(
+            "cargo:rustc-env=CRATE_WSTP_SYS_BINDINGS={}",
+            bindings_path.display()
+        );
+
         return;
     }
 
@@ -57,10 +70,7 @@ fn main() {
     // FIXME: Check that this file actually exists, and generate a nicer error if it
     //        doesn't.
 
-    let bindings_path = PathBuf::from("generated")
-        .join(&wolfram_version.to_string())
-        .join(system_id)
-        .join("WSTP_bindings.rs");
+    let bindings_path = make_bindings_path(&wolfram_version.to_string(), &system_id);
 
     println!("cargo:rerun-if-changed={}", bindings_path.display());
 
@@ -92,6 +102,15 @@ fn main() {
         "cargo:rustc-env=CRATE_WSTP_SYS_BINDINGS={}",
         bindings_path.display()
     );
+}
+
+fn make_bindings_path(wolfram_version: &str, system_id: &str) -> PathBuf {
+    let bindings_path = PathBuf::from("generated")
+        .join(wolfram_version)
+        .join(system_id)
+        .join("WSTP_bindings.rs");
+
+    bindings_path
 }
 
 fn link_wstp_statically(lib: &PathBuf) {
