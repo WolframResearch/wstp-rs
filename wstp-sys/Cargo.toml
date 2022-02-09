@@ -12,6 +12,6 @@ links = "WSTPi4"
 [dependencies]
 
 [build-dependencies]
-wolfram-app-discovery = { git = "https://github.com/WolframResearch/wolfram-app-discovery-rs" }
+wolfram-app-discovery = "0.1.1"
 
 cfg-if = "0.1.10"
