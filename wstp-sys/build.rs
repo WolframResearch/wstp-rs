@@ -13,6 +13,13 @@ use cfg_if::cfg_if;
 use wolfram_app_discovery::WolframApp;
 
 fn main() {
+    // This crate is being built by docs.rs. Skip trying to locate a WolframApp.
+    // See: https://docs.rs/about/builds#detecting-docsrs
+    if std::env::var("DOCS_RS").is_ok() {
+        return;
+    }
+
+
     let app = WolframApp::try_default().expect("unable to locate WolframApp");
 
     //-------------
