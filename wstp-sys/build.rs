@@ -8,8 +8,6 @@
 use std::path::PathBuf;
 use std::process;
 
-use cfg_if::cfg_if;
-
 use wolfram_app_discovery::WolframApp;
 
 fn main() {
@@ -96,13 +94,15 @@ fn main() {
     );
 }
 
-cfg_if![if #[cfg(all(target_os = "macos", target_arch = "x86_64"))] {
-    fn link_wstp_statically(lib: &PathBuf) {
-        let lib = lib.to_str()
-            .expect("could not convert WSTP archive path to str");
-        let lib = lipo_native_library(&lib);
-        link_library_file(lib);
+fn link_wstp_statically(lib: &PathBuf) {
+    let mut lib = lib.clone();
+
+    if cfg!(all(target_os = "macos", target_arch = "x86_64")) {
+        lib = lipo_native_library(&lib);
     }
+
+    link_library_file(lib);
+}
 
     /* NOTE:
         This code was necessary prior to 12.1, where the versions of WSTP in the
@@ -126,7 +126,10 @@ cfg_if![if #[cfg(all(target_os = "macos", target_arch = "x86_64"))] {
     /// file with multiple copies of the same library, each for a different target
     /// architecture. The `lipo -thin` command creates a new archive which contains just
     /// the library for the named architecture.
-    fn lipo_native_library(wstp_lib: &str) -> PathBuf {
+    fn lipo_native_library(wstp_lib: &PathBuf) -> PathBuf {
+        let wstp_lib = wstp_lib.to_str()
+            .expect("could not convert WSTP archive path to str");
+
         // `lipo` will return an error if run on a non-universal binary, so avoid doing
         // that by using the `file` command to check the type of `wstp_lib`.
         let is_universal_binary = {
@@ -158,10 +161,6 @@ cfg_if![if #[cfg(all(target_os = "macos", target_arch = "x86_64"))] {
 
         PathBuf::from(output_lib)
     }
-} else {
-    // FIXME: Add support for Windows and Linux platforms.
-    compile_error!("unsupported target platform");
-}];
 
 fn link_library_file(libfile: PathBuf) {
     let search_dir = libfile.parent().unwrap().display().to_string();
