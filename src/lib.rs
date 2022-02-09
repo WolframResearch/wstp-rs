@@ -104,8 +104,9 @@
 //! is built on top of the [WSTP C API][CFunctions].
 //!
 //! When using the `wstp` crate as a dependency, the `wstp` crate's cargo build script
-//! will use `wolfram-app-discovery` to automatically locate any local installations of
-//! the Wolfram Language, and will link against the WSTP static library located within.
+//! will use [`wolfram-app-discovery`][wolfram-app-discovery] to automatically find any
+//! local installations of the Wolfram Language, and will link against the WSTP static
+//! library located within.
 //!
 //! The [Wolfram Engine][WolframEngine] can be downloaded and used for free for
 //! non-commercial or pre-production uses. A license must be purchased when used as part
@@ -130,6 +131,8 @@
 //! [WolframEngine]: https://www.wolfram.com/engine/
 //! [WE-FAQ]: https://www.wolfram.com/engine/faq/
 //! [CFunctions]: https://reference.wolfram.com/language/guide/AlphabeticalListingOfWSTPCFunctions.html
+//!
+//! [wolfram-app-discovery]: https://crates.io/crates/wolfram-app-discovery
 
 #![warn(missing_docs)]
 

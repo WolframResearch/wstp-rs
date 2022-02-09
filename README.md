@@ -21,7 +21,7 @@ transfer Wolfram Language expressions between programs.
 
 #### Loopback links
 
-Write an expression to a loopback link, and then read it back from the same link
+Write an expression to a loopback [`Link`][Link], and then read it back from the same link
 object:
 
 ```rust
@@ -53,7 +53,7 @@ example();
 
 #### Full-duplex links
 
-Transfer the expression `"hello!"` from one [`Link`] endpoint to another:
+Transfer the expression `"hello!"` from one [`Link`][Link] endpoint to another:
 
 ```rust
 use std::{thread, time::Duration};
@@ -81,6 +81,8 @@ LibraryLink functions.
 
 [wstp-wll-example]: https://github.com/WolframResearch/wolfram-library-link-rs/blob/master/wolfram-library-link/examples/wstp.rs
 
+[Link]: https://docs.rs/wstp/latest/wstp/struct.Link.html
+
 ## Building `wstp`
 
 The `wstp` crate uses [`wolfram-app-discovery`][wolfram-app-discovery] to locate a local
@@ -89,7 +91,9 @@ WSTP SDK cannot be located, `wstp` will fail to build.
 
 If you have installed the Wolfram Language to a location unknown to `wolfram-app-discovery`,
 you may specify the installed location manually by setting the `WOLFRAM_APP_DISCOVERY`
-environment variable. See [Configuring wolfram-app-discovery] (**TODO**) for details.
+environment variable. See [Configuring wolfram-app-discovery][wad-configuration] for details.
+
+[wad-configuration]: https://github.com/WolframResearch/wolfram-app-discovery-rs#configuration
 
 ## Related Links
 
