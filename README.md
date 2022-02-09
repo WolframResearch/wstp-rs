@@ -103,9 +103,9 @@ environment variable. See [Configuring wolfram-app-discovery] (**TODO**) for det
   installations of Wolfram applications and the Wolfram Language.
 
 
-[wolfram-app-discovery]: https://crates.io/wolfram-app-discovery
-[wolfram-library-link]: https://crates.io/wolfram-library-link
-[wolfram-expr]: https://crates.io/wolfram-expr
+[wolfram-app-discovery]: https://crates.io/crates/wolfram-app-discovery
+[wolfram-library-link]: https://crates.io/crates/wolfram-library-link
+[wolfram-expr]: https://crates.io/crates/wolfram-expr
 
 #### Related documentation
 
