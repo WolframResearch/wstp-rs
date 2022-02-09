@@ -15,8 +15,8 @@ same port from multiple threads.
 
 ## Override WSTP `CompilerAdditions` location
 
-By default, [build.rs](../build.rs) will use `wolfram-app-discovery` to locate a
-local installation of the Wolfram Language that contains a suitable copy of the WSTP
+By default, [build.rs](../build.rs) will use [`wolfram-app-discovery`][wolfram-app-discovery]
+to find a local installation of the Wolfram Language that contains a suitable copy of the WSTP
 SDK. If you wish to override the WSTP SDK `CompilerAdditions` directory that `wstp` is
 linked against, you may set either one of these two environment variables, depending
 on your use case:
@@ -35,3 +35,7 @@ Override the `WSTP_COMPILER_ADDITIONS` location:
 ```shell
 $ export WSTP_COMPILER_ADDITIONS=/Applications/Mathematica.app/Contents/SystemFiles/Links/WSTP/DeveloperKit/MacOSX-x86-64/CompilerAdditions
 ```
+
+
+
+[wolfram-app-discovery]: https://crates.io/crates/wolfram-app-discovery
