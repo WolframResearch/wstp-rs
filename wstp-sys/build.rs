@@ -15,10 +15,7 @@ fn main() {
     // See: https://docs.rs/about/builds#detecting-docsrs
     if std::env::var("DOCS_RS").is_ok() {
         // Force docs.rs to use the bindings generated for this version / system.
-        let bindings_path = make_bindings_path(
-            "13.0.0",
-            "MacOSX-x86-64"
-        );
+        let bindings_path = make_bindings_path("13.0.0", "MacOSX-x86-64");
 
         // This environment variable is included using `env!()`. wstp-sys will fail to
         // build if it is not set correctly.
@@ -123,63 +120,66 @@ fn link_wstp_statically(lib: &PathBuf) {
     link_library_file(lib);
 }
 
-    /* NOTE:
-        This code was necessary prior to 12.1, where the versions of WSTP in the
-        Mathematica layout were univeral binaries containing 32-bit and 64-bit copies of
-        the libary. However, it appears that starting with 12.1, the layout build of
-        libWSTP is no longer a "fat" archive. (This is possibly due to the fact that macOS
-        Catalina, released ~6 months prior, and dropped support for 32-bit applications on
-        macOS.)
+/* NOTE:
+    This code was necessary prior to 12.1, where the versions of WSTP in the
+    Mathematica layout were univeral binaries containing 32-bit and 64-bit copies of
+    the libary. However, it appears that starting with 12.1, the layout build of
+    libWSTP is no longer a "fat" archive. (This is possibly due to the fact that macOS
+    Catalina, released ~6 months prior, and dropped support for 32-bit applications on
+    macOS.)
 
-        I'm electing to leave this code around in the meantime, in case the situation
-        changes, but it appears this `lipo` operation may no longer be necessary.
+    I'm electing to leave this code around in the meantime, in case the situation
+    changes, but it appears this `lipo` operation may no longer be necessary.
 
-        Update: This code is still useful, because the advent of ARM macOS machines means
-                that local development builds of WSTP will build universal x86_64 and
-                arm64 binaries by default on macOS.
-    */
-    /// Use the macOS `lipo` command to construct an x86_64 archive file from the WSTPi4.a
-    /// file in the Mathematica layout. This is necessary as a workaround to a bug in the
-    /// Rust compiler at the moment: https://github.com/rust-lang/rust/issues/50220.
-    /// The problem is that WSTPi4.a is a so called "universal binary"; it's an archive
-    /// file with multiple copies of the same library, each for a different target
-    /// architecture. The `lipo -thin` command creates a new archive which contains just
-    /// the library for the named architecture.
-    fn lipo_native_library(wstp_lib: &PathBuf) -> PathBuf {
-        let wstp_lib = wstp_lib.to_str()
-            .expect("could not convert WSTP archive path to str");
+    Update: This code is still useful, because the advent of ARM macOS machines means
+            that local development builds of WSTP will build universal x86_64 and
+            arm64 binaries by default on macOS.
+*/
+/// Use the macOS `lipo` command to construct an x86_64 archive file from the WSTPi4.a
+/// file in the Mathematica layout. This is necessary as a workaround to a bug in the
+/// Rust compiler at the moment: https://github.com/rust-lang/rust/issues/50220.
+/// The problem is that WSTPi4.a is a so called "universal binary"; it's an archive
+/// file with multiple copies of the same library, each for a different target
+/// architecture. The `lipo -thin` command creates a new archive which contains just
+/// the library for the named architecture.
+fn lipo_native_library(wstp_lib: &PathBuf) -> PathBuf {
+    let wstp_lib = wstp_lib
+        .to_str()
+        .expect("could not convert WSTP archive path to str");
 
-        // `lipo` will return an error if run on a non-universal binary, so avoid doing
-        // that by using the `file` command to check the type of `wstp_lib`.
-        let is_universal_binary = {
-            let stdout = process::Command::new("file")
-                .args(&[wstp_lib])
-                .output()
-                .expect("failed to run `file` system utility").stdout;
-            let stdout = String::from_utf8(stdout).unwrap();
-            stdout.contains("Mach-O universal binary")
-        };
-
-        if !is_universal_binary {
-            return PathBuf::from(wstp_lib);
-        }
-
-        // Place the lipo'd library file in the system temporary directory.
-        let output_lib = std::env::temp_dir().join("libWSTP-x86-64.a");
-        let output_lib = output_lib.to_str()
-            .expect("could not convert WSTP archive path to str");
-
-        let output = process::Command::new("lipo")
-            .args(&[wstp_lib, "-thin", "x86_64", "-output", output_lib])
+    // `lipo` will return an error if run on a non-universal binary, so avoid doing
+    // that by using the `file` command to check the type of `wstp_lib`.
+    let is_universal_binary = {
+        let stdout = process::Command::new("file")
+            .args(&[wstp_lib])
             .output()
-            .expect("failed to invoke macOS `lipo` command");
+            .expect("failed to run `file` system utility")
+            .stdout;
+        let stdout = String::from_utf8(stdout).unwrap();
+        stdout.contains("Mach-O universal binary")
+    };
 
-        if !output.status.success() {
-            panic!("unable to lipo WSTP library: {:#?}", output);
-        }
-
-        PathBuf::from(output_lib)
+    if !is_universal_binary {
+        return PathBuf::from(wstp_lib);
     }
+
+    // Place the lipo'd library file in the system temporary directory.
+    let output_lib = std::env::temp_dir().join("libWSTP-x86-64.a");
+    let output_lib = output_lib
+        .to_str()
+        .expect("could not convert WSTP archive path to str");
+
+    let output = process::Command::new("lipo")
+        .args(&[wstp_lib, "-thin", "x86_64", "-output", output_lib])
+        .output()
+        .expect("failed to invoke macOS `lipo` command");
+
+    if !output.status.success() {
+        panic!("unable to lipo WSTP library: {:#?}", output);
+    }
+
+    PathBuf::from(output_lib)
+}
 
 fn link_library_file(libfile: PathBuf) {
     let search_dir = libfile.parent().unwrap().display().to_string();
