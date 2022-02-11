@@ -6,20 +6,21 @@ use crate::{
 use std::collections::HashMap;
 use std::sync::Mutex;
 
+use once_cell::sync::Lazy;
+
 struct ForceSend<T>(T);
 
 unsafe impl<T> Send for ForceSend<T> {}
 
-lazy_static::lazy_static! {
-    /// Hash map used to store the closure passed to [`Link::wait_with_callback()`].
-    ///
-    /// This is a workaround for the fact that [WSWaitForLinkActivityWithCallback][sys::WSWaitForLinkActivityWithCallback]
-    /// takes a function pointer as an argument, but provides no way to provide a piece of
-    /// data to that function pointer. Both pieces of data are required to pass a Rust
-    /// closure across the FFI boundry. Instead, we store the closure in this global static
-    /// hash map, and look it up inside the callback trampoline function.
-    static ref WAIT_CALLBACKS: Mutex<ForceSend<HashMap<WSLINK, *mut std::ffi::c_void>>> = Mutex::new(ForceSend(HashMap::new()));
-}
+/// Hash map used to store the closure passed to [`Link::wait_with_callback()`].
+///
+/// This is a workaround for the fact that [WSWaitForLinkActivityWithCallback][sys::WSWaitForLinkActivityWithCallback]
+/// takes a function pointer as an argument, but provides no way to provide a piece of
+/// data to that function pointer. Both pieces of data are required to pass a Rust
+/// closure across the FFI boundry. Instead, we store the closure in this global static
+/// hash map, and look it up inside the callback trampoline function.
+static WAIT_CALLBACKS: Lazy<Mutex<ForceSend<HashMap<WSLINK, *mut std::ffi::c_void>>>> =
+    Lazy::new(|| Mutex::new(ForceSend(HashMap::new())));
 
 impl Link {
     /// *WSTP C API Documentation:* [`WSWaitForLinkActivity`](https://reference.wolfram.com/language/ref/c/WSWaitForLinkActivity.html)
