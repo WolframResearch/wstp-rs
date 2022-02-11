@@ -24,7 +24,10 @@
 //!   * All [`Link`][crate::Link]'s MUST be closed before the `WstpEnv` they are
 //!     associated with is deinitialized (essentially a restatement of the first condition).
 
-use std::sync::Mutex;
+use std::{
+    ops::Deref,
+    sync::{Mutex, MutexGuard},
+};
 
 use once_cell::sync::Lazy;
 
@@ -47,6 +50,19 @@ pub(crate) struct WstpEnv {
 }
 
 unsafe impl Send for WstpEnv {}
+
+/// An RAII guard that provides scoped access to the `STDENV` static.
+pub(crate) struct StdEnv {
+    guard: MutexGuard<'static, WstpEnv>,
+}
+
+impl Deref for StdEnv {
+    type Target = WstpEnv;
+
+    fn deref(&self) -> &WstpEnv {
+        &*self.guard
+    }
+}
 
 /// Private.
 ///
@@ -82,10 +98,12 @@ impl WstpEnv {
 }
 
 /// Acquire a lock on [`struct@STDENV`].
-pub(crate) fn stdenv() -> Result<std::sync::MutexGuard<'static, WstpEnv>, Error> {
-    STDENV.lock().map_err(|err| {
+pub(crate) fn stdenv() -> Result<StdEnv, Error> {
+    let guard = STDENV.lock().map_err(|err| {
         Error::custom(format!("Unable to acquire lock on STDENV: {}", err))
-    })
+    })?;
+
+    Ok(StdEnv { guard })
 }
 
 impl Drop for WstpEnv {
