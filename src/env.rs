@@ -26,16 +26,15 @@
 
 use std::sync::Mutex;
 
+use once_cell::sync::Lazy;
+
 use crate::{sys, Error};
 
-lazy_static::lazy_static! {
-    /// The standard WSTP environment object.
-    ///
-    /// *WSTP C API Documentation:* [`stdenv`](https://reference.wolfram.com/language/ref/c/stdenv.html)
-    static ref STDENV: Mutex<WstpEnv> = {
-        Mutex::new(initialize().unwrap())
-    };
-}
+/// The standard WSTP environment object.
+///
+/// *WSTP C API Documentation:* [`stdenv`](https://reference.wolfram.com/language/ref/c/stdenv.html)
+static STDENV: Lazy<Mutex<WstpEnv>> = Lazy::new(|| Mutex::new(initialize().unwrap()));
+
 /// Private. A WSTP library environment.
 ///
 /// NOTE: This function should remain private. See note on [`crate::env`].

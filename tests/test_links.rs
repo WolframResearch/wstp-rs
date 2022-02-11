@@ -1,11 +1,12 @@
 use std::sync::Mutex;
+
+use once_cell::sync::Lazy;
+
 use wstp::{sys, Link, Protocol};
 
-lazy_static::lazy_static! {
-    /// Guard used to ensure the tests which bind to a port are run sequentially, so that
-    /// port is free for each test.
-    static ref MUTEX: Mutex<()> = Mutex::new(());
-}
+/// Guard used to ensure the tests which bind to a port are run sequentially, so that
+/// port is free for each test.
+static MUTEX: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
 fn random_link_name() -> String {
     use rand::{distributions::Alphanumeric, Rng};
