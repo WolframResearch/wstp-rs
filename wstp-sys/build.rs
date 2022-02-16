@@ -41,9 +41,15 @@ fn main() {
 
     link_wstp_statically(&static_lib);
 
+    //
+    // Link to the C++ standard library, required by WSTP
+    //
+
+    // Note: This is now handled by the `link-cplusplus` crate dependency.
+
     // Note: This blog post explained this, and that this might need to change on Linux.
     //         https://flames-of-code.netlify.com/blog/rust-and-cmake-cplusplus/
-    println!("cargo:rustc-link-lib=dylib=c++");
+    // println!("cargo:rustc-link-lib=dylib=c++");
 
     // TODO: Look at the complete list of CMake libraries required by WSTP and update this
     //       logic for Windows and Linux.

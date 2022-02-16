@@ -15,6 +15,7 @@ categories = ["external-ffi-bindings", "development-tools::ffi", "encoding"]
 links = "WSTPi4"
 
 [dependencies]
+link-cplusplus = "1.0.6"
 
 [build-dependencies]
 wolfram-app-discovery = "0.2.0"
