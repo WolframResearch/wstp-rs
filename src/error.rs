@@ -34,10 +34,12 @@ impl Error {
         let message: String = crate::env::stdenv()
             .ok()
             .and_then(|stdenv| unsafe {
+                let code_long = std::os::raw::c_long::try_from(code).unwrap();
+
                 // Note: We do not need to free this, because it's scoped to our eternal
                 //       STDENV instance.
                 let message_cptr: *const c_char =
-                    crate::sys::WSErrorString(stdenv.raw_env, i64::from(code));
+                    crate::sys::WSErrorString(stdenv.raw_env, code_long);
 
                 if message_cptr.is_null() {
                     return None;
