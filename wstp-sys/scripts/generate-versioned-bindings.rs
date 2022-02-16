@@ -4,7 +4,7 @@
 //!
 //! [dependencies]
 //! bindgen = "^0.58.1"
-//! wolfram-app-discovery = { git = "https://github.com/WolframResearch/wolfram-app-discovery-rs" }
+//! wolfram-app-discovery = "0.2.0"
 //! ```
 
 use std::path::PathBuf;
