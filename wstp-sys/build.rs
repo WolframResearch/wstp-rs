@@ -27,6 +27,24 @@ fn main() {
         return;
     }
 
+    //
+    // Error if this is a cross compilation
+    //
+
+    let host = std::env::var("HOST").expect("expected 'HOST' env var to be set");
+    let target = std::env::var("TARGET").expect("expected 'TARGET' env var to be set");
+
+    // Note: `host == target` is required for the use of `cfg!(..)` in this
+    //       script to be valid.
+    if host != target {
+        panic!(
+            "error: crate wstp-sys does not support cross compilation. (host: {}, target: {})",
+            host,
+            target
+        );
+    }
+
+
 
     let app = WolframApp::try_default().expect("unable to locate WolframApp");
 
@@ -51,10 +69,43 @@ fn main() {
     //         https://flames-of-code.netlify.com/blog/rust-and-cmake-cplusplus/
     // println!("cargo:rustc-link-lib=dylib=c++");
 
+    //-----------------------------------
+    // Link to WSTP "interface" libraries
+    //-----------------------------------
+
+    // The CompilerAdditions/WSTP-targets.cmake file describes the dependencies
+    // of the WSTP library that must be linked into the final artifact for any
+    // code that depends on WSTP. (The contents of that file differ on each
+    // platform). They are the `INTERFACE_LINK_PROPERTIES` of the
+    // `WSTP::STATIC_LIBRARY` CMake target.
+    //
+    // On macOS, the Foundation framework is the only dependency. On Windows,
+    // several system libraries must be linked.
+    //
+    // FIXME: Update this logic to cover the Linux interface libraries.
+
+    //
+    // macOS
+    //
+
     // TODO: Look at the complete list of CMake libraries required by WSTP and update this
     //       logic for Windows and Linux.
     if cfg!(target_os = "macos") {
         println!("cargo:rustc-link-lib=framework=Foundation");
+    }
+
+    //
+    // Windows
+    //
+
+    if cfg!(target_os = "windows") {
+        println!("cargo:rustc-link-lib=dylib=kernel32");
+        println!("cargo:rustc-link-lib=dylib=user32");
+        println!("cargo:rustc-link-lib=dylib=advapi32");
+        println!("cargo:rustc-link-lib=dylib=comdlg32");
+        println!("cargo:rustc-link-lib=dylib=ws2_32");
+        println!("cargo:rustc-link-lib=dylib=wsock32");
+        println!("cargo:rustc-link-lib=dylib=rpcrt4");
     }
 
     //---------------------------------------------------------------
