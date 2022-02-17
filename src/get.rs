@@ -37,7 +37,6 @@ use crate::{
 /// // Get a `&str` from the `LinkStr`
 /// assert_eq!(string.as_str(), "hello world");
 /// ```
-#[derive(Debug)]
 pub struct LinkStr<'link, T: LinkStrType + ?Sized = str> {
     link: &'link Link,
 
@@ -50,7 +49,7 @@ pub struct LinkStr<'link, T: LinkStrType + ?Sized = str> {
     is_symbol: bool,
 }
 
-pub unsafe trait LinkStrType {
+pub unsafe trait LinkStrType: fmt::Debug {
     type Element;
 
     unsafe fn from_slice_unchecked<'s>(slice: &'s [Self::Element]) -> &'s Self;
@@ -752,6 +751,27 @@ impl<'link, T> Drop for Array<'link, T> {
 //======================================
 // Formatting impls
 //======================================
+
+impl<'link, T: LinkStrType + fmt::Debug + ?Sized> fmt::Debug for LinkStr<'link, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let LinkStr {
+            link,
+            ptr,
+            length,
+            is_symbol,
+        } = self;
+
+        let value = format!("{:?}", self.get());
+
+        f.debug_struct("LinkStr")
+            .field("<value>", &value)
+            .field("link", link)
+            .field("ptr", ptr)
+            .field("length", length)
+            .field("is_symbol", is_symbol)
+            .finish()
+    }
+}
 
 impl<'link, T> fmt::Debug for Array<'link, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
