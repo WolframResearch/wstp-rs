@@ -33,11 +33,11 @@ Initial release of the [`wstp`](https://crates.io/crates/wstp) crate.
 
 ### Added
 
-* [`Link`](https://docs.rs/wstp/0.1.0/wstp/struct.Link.html) struct that represents a
+* [`Link`](https://docs.rs/wstp/0.1.3/wstp/struct.Link.html) struct that represents a
   WSTP link endpoint, and provides methods for reading and writing symbolic Wolfram
   Language expressions.
 
-* [`LinkServer`](https://docs.rs/wstp/0.1.0/wstp/struct.LinkServer.html) struct that
+* [`LinkServer`](https://docs.rs/wstp/0.1.3/wstp/struct.LinkServer.html) struct that
   represents a WSTP TCPIP link server, which binds to a port, listens for incoming
   connections, and creates a new `Link` for each connection.
 
