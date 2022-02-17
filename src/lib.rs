@@ -173,6 +173,7 @@ use wstp_sys::{WSErrorMessage, WSReady, WSReleaseErrorMessage, WSLINK};
 pub use wstp_sys as sys;
 
 pub use crate::{
+    env::shutdown,
     error::Error,
     get::{Array, LinkStr},
     link_server::LinkServer,
