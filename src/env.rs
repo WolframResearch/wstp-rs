@@ -36,7 +36,8 @@ use crate::{sys, Error};
 /// The standard WSTP environment object.
 ///
 /// *WSTP C API Documentation:* [`stdenv`](https://reference.wolfram.com/language/ref/c/stdenv.html)
-static STDENV: Lazy<Mutex<WstpEnv>> = Lazy::new(|| Mutex::new(initialize().unwrap()));
+static STDENV: Lazy<Mutex<Option<WstpEnv>>> =
+    Lazy::new(|| Mutex::new(Some(initialize().unwrap())));
 
 /// Private. A WSTP library environment.
 ///
@@ -53,14 +54,17 @@ unsafe impl Send for WstpEnv {}
 
 /// An RAII guard that provides scoped access to the `STDENV` static.
 pub(crate) struct StdEnv {
-    guard: MutexGuard<'static, WstpEnv>,
+    guard: MutexGuard<'static, Option<WstpEnv>>,
 }
 
 impl Deref for StdEnv {
     type Target = WstpEnv;
 
     fn deref(&self) -> &WstpEnv {
-        &*self.guard
+        match self.guard.as_ref() {
+            Some(stdenv) => stdenv,
+            None => panic!("STDENV has been shutdown."),
+        }
     }
 }
 
@@ -88,12 +92,54 @@ fn initialize() -> Result<WstpEnv, Error> {
     Ok(WstpEnv { raw_env })
 }
 
+
+/// Deinitialize the [`WSENV`] static maintained by this library.
+///
+/// Ideally, this function would not be necessary. However, the WSTP C library internally
+/// launches several background threads necessary for its operation. If these threads are
+/// still running when the main() function returns, an ungraceful shutdown can occur, with
+/// error messages being printed. This function is an escape hatch to permit users of this
+/// library to ensure that all background thread shutdown before `main()` returns.
+///
+/// TODO: Make this function obsolete, either by changing the WSTP C library
+///       implementation, or, perhaps easier, maintain a reference count of the number of
+///       [`Link`] objects that have been created, and (re-)initialize and deinitialize
+///       the `WSENV` static whenever that count rises from or falls to 0.
+///
+/// # Safety
+///
+/// All [`Link`] objects created by this library are associated with the global [`WSENV`]
+/// static used internally. Deinitializing the global `WSENV` before all [`Link`] objects
+/// have been dropped is not legal. Only call this function after ensuring that all
+/// [`Link`] objects created by your code have been dropped.
+#[doc(hidden)]
+pub unsafe fn shutdown() -> Result<bool, Error> {
+    let mut guard = STDENV.lock().map_err(|err| {
+        Error::custom(format!("Unable to acquire lock on STDENV: {}", err))
+    })?;
+
+    let was_initialized = if let Some(env) = guard.take() {
+        env.deinitialize();
+        true
+    } else {
+        false
+    };
+
+    Ok(was_initialized)
+}
+
 impl WstpEnv {
     #[allow(dead_code)]
     pub fn raw_env(&self) -> sys::WSENV {
         let WstpEnv { raw_env } = *self;
 
         raw_env
+    }
+
+    fn deinitialize(self) {
+        let WstpEnv { raw_env } = self;
+
+        unsafe { sys::WSDeinitialize(raw_env) }
     }
 }
 
