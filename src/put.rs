@@ -23,6 +23,15 @@ impl Link {
         Ok(())
     }
 
+    /// *WSTP C API Documentation:* [`WSEndPacket()`](https://reference.wolfram.com/language/ref/c/WSEndPacket.html)
+    pub fn end_packet(&mut self) -> Result<(), Error> {
+        if unsafe { sys::WSEndPacket(self.raw_link) } == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        Ok(())
+    }
+
     //==================================
     // Atoms
     //==================================
