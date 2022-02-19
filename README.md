@@ -40,7 +40,7 @@ fn example() -> Result<(), wstp::Error> {
     let mut buffer = String::new();
 
     for _ in 0 .. link.test_head("System`List")? {
-        buffer.push_str(link.get_string_ref()?.to_str())
+        buffer.push_str(link.get_string_ref()?.as_str())
     }
 
     assert_eq!(buffer, "abc");

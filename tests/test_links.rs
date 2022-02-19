@@ -59,7 +59,7 @@ fn check_send_data_across_link(mut link_a: Link, mut link_b: Link) {
         {
             assert_eq!(link_b.get_raw_type(), Ok(i32::from(sys::WSTKFUNC)));
             assert_eq!(link_b.get_arg_count(), Ok(2));
-            assert!(link_b.get_symbol_ref().unwrap().to_str() == "Sin");
+            assert!(link_b.get_symbol_ref().unwrap().as_str() == "Sin");
             assert_eq!(link_b.get_f64(), Ok(1.0))
         }
 
