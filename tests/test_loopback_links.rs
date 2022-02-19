@@ -1,5 +1,5 @@
 use wolfram_expr::{Expr, Symbol};
-use wstp::{sys, Link, LinkStr, Protocol};
+use wstp::{sys, Link, LinkStr, Protocol, Token, TokenType};
 
 fn check_loopback_roundtrip(expr: Expr) {
     let mut link = Link::new_loopback().expect("failed to create Loopback link");
@@ -194,4 +194,52 @@ fn test_loopback_transfer_list() {
         new.get_expr().unwrap().to_string(),
         "System`List[5, \"second\", Global`foo]"
     );
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_loopback_get_tokens() {
+    // Put {5, "second", foo}
+    let mut link = Link::new_loopback().unwrap();
+    link.put_function("System`List", 3).unwrap();
+    link.put_i64(5).unwrap();
+    link.put_str("second").unwrap();
+    link.put_symbol("Global`foo").unwrap();
+
+    assert!(matches!(link.get_token().unwrap(), Token::Function { length: 3 }));
+    assert!(matches!(link.get_token().unwrap(), Token::Symbol(s) if s.as_str() == "System`List"));
+    assert!(matches!(link.get_token().unwrap(), Token::Integer(5)));
+    assert!(matches!(link.get_token().unwrap(), Token::String(s) if s.as_str() == "second"));
+    assert!(matches!(link.get_token().unwrap(), Token::Symbol(s) if s.as_str() == "Global`foo"));
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_loopback_get_token_type_is_idempotent() {
+    // Put {5, "second", foo}
+    let mut link = Link::new_loopback().unwrap();
+    link.put_function("System`List", 3).unwrap();
+    link.put_i64(5).unwrap();
+    link.put_str("second").unwrap();
+    link.put_symbol("Global`foo").unwrap();
+
+    // Calling get_type(), even multiple times in a row, should not advance the link at
+    // all.
+    assert_eq!(link.get_type().unwrap(), TokenType::Function);
+    assert_eq!(link.get_type().unwrap(), TokenType::Function);
+    assert_eq!(link.get_type().unwrap(), TokenType::Function);
+
+    assert!(matches!(link.get_token().unwrap(), Token::Function { length: 3 }));
+
+    assert_eq!(link.get_type().unwrap(), TokenType::Symbol);
+    assert_eq!(link.get_type().unwrap(), TokenType::Symbol);
+    assert_eq!(link.get_type().unwrap(), TokenType::Symbol);
+
+    assert!(matches!(link.get_token().unwrap(), Token::Symbol(s) if s.as_str() == "System`List"));
+
+    assert_eq!(link.get_type().unwrap(), TokenType::Integer);
+    assert_eq!(link.get_type().unwrap(), TokenType::Integer);
+    assert_eq!(link.get_type().unwrap(), TokenType::Integer);
+
+    assert!(matches!(link.get_token().unwrap(), Token::Integer(5)));
 }
