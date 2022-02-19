@@ -656,9 +656,21 @@ impl Link {
 
     /// Read an expression off of this link.
     pub fn get_expr(&mut self) -> Result<Expr, Error> {
-        let token = self.get_token()?;
+        self.get_expr_with_resolver(&mut |_| None)
+    }
 
-        let expr: Expr = match token {
+    // TODO: This needs a bit more design work before being made public. For starters,
+    //       you have to pass a closure to it using `get_expr_with_resolver(&mut |_| ...)`
+    //       which looks out of place. Using `dyn FnMut()` is to avoid having to
+    //       monomorphize different copies of `get_expr_with_resolver()`
+    #[doc(hidden)]
+    pub fn get_expr_with_resolver(
+        &mut self,
+        mut resolver: &mut dyn FnMut(&str) -> Option<Symbol>,
+    ) -> Result<Expr, Error> {
+        let value = self.get_token()?;
+
+        let expr: Expr = match value {
             Token::Integer(value) => Expr::from(value),
             Token::Real(value) => {
                 let real: wolfram_expr::F64 = match wolfram_expr::F64::new(value) {
@@ -676,7 +688,11 @@ impl Link {
             Token::Symbol(value) => {
                 let symbol_str: &str = value.as_str();
 
-                let symbol: Symbol = match Symbol::try_new(symbol_str) {
+                // If `symbol_str` is not an absolute symbol, use the provided `resolver`
+                // to attempt to resolve it into a concrete Symbol.
+                let symbol = Symbol::try_new(symbol_str).or_else(|| resolver(symbol_str));
+
+                let symbol: Symbol = match symbol {
                     Some(sym) => sym,
                     None => {
                         return Err(Error::custom(format!(
@@ -689,13 +705,13 @@ impl Link {
                 Expr::symbol(symbol)
             },
             Token::Function { length: arg_count } => {
-                drop(token);
+                drop(value);
 
-                let head = self.get_expr()?;
+                let head = self.get_expr_with_resolver(&mut resolver)?;
 
                 let mut contents = Vec::with_capacity(arg_count);
                 for _ in 0..arg_count {
-                    contents.push(self.get_expr()?);
+                    contents.push(self.get_expr_with_resolver(&mut resolver)?);
                 }
 
                 Expr::normal(head, contents)
