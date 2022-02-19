@@ -656,7 +656,53 @@ impl Link {
 
     /// Read an expression off of this link.
     pub fn get_expr(&mut self) -> Result<Expr, Error> {
-        get_expr(self)
+        let token = self.get_token()?;
+
+        let expr: Expr = match token {
+            Token::Integer(value) => Expr::from(value),
+            Token::Real(value) => {
+                let real: wolfram_expr::F64 = match wolfram_expr::F64::new(value) {
+                    Ok(real) => real,
+                    // TODO: Try passing a NaN value or a BigReal value through WSLINK.
+                    Err(_is_nan) => {
+                        return Err(Error::custom(format!(
+                        "NaN value passed on WSLINK cannot be used to construct an Expr"
+                    )))
+                    },
+                };
+                Expr::number(Number::Real(real))
+            },
+            Token::String(value) => Expr::string(value.as_str()),
+            Token::Symbol(value) => {
+                let symbol_str: &str = value.as_str();
+
+                let symbol: Symbol = match Symbol::try_new(symbol_str) {
+                    Some(sym) => sym,
+                    None => {
+                        return Err(Error::custom(format!(
+                            "symbol name '{}' has no context",
+                            symbol_str
+                        )))
+                    },
+                };
+
+                Expr::symbol(symbol)
+            },
+            Token::Function { length: arg_count } => {
+                drop(token);
+
+                let head = self.get_expr()?;
+
+                let mut contents = Vec::with_capacity(arg_count);
+                for _ in 0..arg_count {
+                    contents.push(self.get_expr()?);
+                }
+
+                Expr::normal(head, contents)
+            },
+        };
+
+        Ok(expr)
     }
 
     /// Write an expression to this link.
@@ -752,68 +798,6 @@ impl Link {
         Ok(())
     }
 }
-
-//======================================
-// Read from the link
-//======================================
-
-fn get_expr(link: &mut Link) -> Result<Expr, Error> {
-    use wstp_sys::{WSTKFUNC, WSTKINT, WSTKREAL, WSTKSTR, WSTKSYM};
-
-    let type_: i32 = link.get_raw_type()?;
-
-    let expr: Expr = match type_ as u8 {
-        WSTKINT => Expr::from(link.get_i64()?),
-        WSTKREAL => {
-            let real: wolfram_expr::F64 = match wolfram_expr::F64::new(link.get_f64()?) {
-                Ok(real) => real,
-                // TODO: Try passing a NaN value or a BigReal value through WSLINK.
-                Err(_is_nan) => {
-                    return Err(Error::custom(format!(
-                        "NaN value passed on WSLINK cannot be used to construct an Expr"
-                    )))
-                },
-            };
-            Expr::number(Number::Real(real))
-        },
-        WSTKSTR => Expr::string(link.get_string_ref()?.as_str()),
-        WSTKSYM => {
-            let symbol_link_str = link.get_symbol_ref()?;
-            let symbol_str = symbol_link_str.as_str();
-
-            let symbol: Symbol = match Symbol::try_new(symbol_str) {
-                Some(sym) => sym,
-                None => {
-                    return Err(Error::custom(format!(
-                        "symbol name '{}' has no context",
-                        symbol_str
-                    )))
-                },
-            };
-
-            Expr::symbol(symbol)
-        },
-        WSTKFUNC => {
-            let arg_count = link.get_arg_count()?;
-
-            let head = link.get_expr()?;
-
-            let mut contents = Vec::with_capacity(arg_count);
-            for _ in 0..arg_count {
-                contents.push(link.get_expr()?);
-            }
-
-            Expr::normal(head, contents)
-        },
-        _ => return Err(Error::custom(format!("unknown WSLINK type: {}", type_))),
-    };
-
-    Ok(expr)
-}
-
-//======================================
-// Write to the link
-//======================================
 
 //======================================
 // Utilities
