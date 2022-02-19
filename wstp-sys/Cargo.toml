@@ -17,4 +17,4 @@ links = "WSTPi4"
 [dependencies]
 
 [build-dependencies]
-wolfram-app-discovery = "0.1.2"
+wolfram-app-discovery = "0.2.0"
