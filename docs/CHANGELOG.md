@@ -7,17 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+
+## [0.1.4] – 2022-02-19
+
+### Added
+
+* Added [`WolframKernelProcess`](https://docs.rs/wstp/0.1.4/wstp/kernel/struct.WolframKernelProcess.html)
+  struct, used to create and manage a WSTP connection to a Wolfram Kernel process.  ([#24])
+
+  `WolframKernelProcess` can be combined with the
+  [wolfram-app-discovery](https://crates.io/crates/wolfram-app-discovery) crate to easily
+  launch a new Wolfram Kernel session with no manual configuration:
+
+  ```rust
+  use std::path::PathBuf;
+  use wolfram_app_discovery::WolframApp;
+  use wstp::kernel::WolframKernelProcess;
+
+  // Automatically find a local Wolfram Language installation.
+  let app = WolframApp::try_default()
+      .expect("unable to find any Wolfram Language installations");
+
+  let exe: PathBuf = app.kernel_executable_path().unwrap();
+
+  // Create a new Wolfram Language session using this Kernel.
+  let kernel = WolframKernelProcess::launch(&exe).unwrap();
+  ```
+
+* Added [`Link::put_eval_packet()`](https://docs.rs/wstp/0.1.4/wstp/struct.Link.html#method.put_eval_packet)
+  convenience method to perform evaluations using a connected Wolfram Kernel.  ([#24])
+
+* Added types and methods for ergonomic processing of WSTP tokens.  ([#25])
+
+  A token is the basic unit of expression data that can be read from or written to a link.
+  Use the new
+  [`Link::get_token()`](https://docs.rs/wstp/0.1.4/wstp/struct.Link.html#method.get_token)
+  method to ergonomically match over the
+  [`Token`](https://docs.rs/wstp/0.1.4/wstp/enum.Token.html)
+  that is readoff of the link:
+
+  ```rust
+  use wstp::{Link, Token};
+
+  match link.get_token()? {
+      Token::Integer(int) => {
+          // Do something with `int`.
+      },
+      Token::Real(real) => {
+          // Do something with `real`.
+      },
+      ...
+  }
+  ```
+
+* Added `Link::end_packet()` method.  ([#23])
+* Added `wstp::shutdown()`.  ([#23])
+
+### Fixed
+
+* Fixed `Debug` formatting of `LinkStr` to include the string contents.  ([#23])
+* Upgrade `wolfram-app-discovery` dependency to v0.2.0 (adds support for app discovery on
+  Windows).  ([#25])
+
+
+
 ## [0.1.3] – 2022-02-08
 
 ### Fixed
 
 * Fixed another `wstp-sys` build failure when built in the docs.rs environment.  ([#19])
 
+
+
 ## [0.1.2] – 2022-02-08
 
 ### Fixed
 
 * Fixed `wstp-sys` build failures when built in the docs.rs environment.  ([#17])
+
+
 
 ## [0.1.1] – 2022-02-08
 
@@ -26,6 +95,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Increase `wolfram-app-discovery` dependency version from v0.1.1 to v0.1.2 to get fix
   for [compilation error when compiling for non-macOS targets](https://github.com/WolframResearch/wolfram-app-discovery-rs/blob/master/docs/CHANGELOG.md#012--2022-02-08)
   ([#16])
+
+
 
 ## [0.1.0] – 2022-02-08
 
@@ -49,10 +120,15 @@ Initial release of the [`wstp`](https://crates.io/crates/wstp) crate.
 [#17]: https://github.com/WolframResearch/wstp-rs/pull/17
 [#19]: https://github.com/WolframResearch/wstp-rs/pull/19
 
+[#23]: https://github.com/WolframResearch/wstp-rs/pull/23
+[#24]: https://github.com/WolframResearch/wstp-rs/pull/24
+[#25]: https://github.com/WolframResearch/wstp-rs/pull/25
+
 
 <!-- This needs to be updated for each tagged release. -->
-[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.1.4...HEAD
 
+[0.1.4]: https://github.com/WolframResearch/wstp-rs/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/WolframResearch/wstp-rs/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/WolframResearch/wstp-rs/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/WolframResearch/wstp-rs/compare/v0.1.0...v0.1.1
