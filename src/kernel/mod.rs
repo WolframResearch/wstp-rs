@@ -16,7 +16,32 @@
 //! let kernel = WolframKernelProcess::launch(&exe).unwrap();
 //! ```
 //!
+//! ### Automatic Wolfram Kernel discovery
+//!
+//! Use the [wolfram-app-discovery] crate to automatically discover a suitable
+//! `WolframKernel`:
+//!
+//! ```no_run
+//! use std::path::PathBuf;
+//! use wolfram_app_discovery::WolframApp;
+//! use wstp::kernel::WolframKernelProcess;
+//!
+//! let app = WolframApp::try_default()
+//!     .expect("unable to find any Wolfram Language installations");
+//!
+//! let exe: PathBuf = app.kernel_executable_path().unwrap();
+//!
+//! let kernel = WolframKernelProcess::launch(&exe).unwrap();
+//! ```
+//!
+//! Using automatic discovery makes it easy to write programs that are portable to
+//! different computers, without relying on end-user configuration to specify the location
+//! of the local Wolfram Language installation.
+//!
+//!
 //! [WolframKernel]: https://reference.wolfram.com/language/ref/program/WolframKernel.html
+//! [wolfram-app-discovery]: https://crates.io/crates/wolfram-app-discovery
+//!
 //!
 //! # Related Links
 //!
