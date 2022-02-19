@@ -22,3 +22,4 @@ ref-cast = "1.0.6"
 
 [dev-dependencies]
 rand = "0.8.3"
+wolfram-app-discovery = "0.2.0"

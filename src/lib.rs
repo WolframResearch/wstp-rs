@@ -147,6 +147,8 @@ mod put;
 
 mod strx;
 
+pub mod kernel;
+
 /// Ensure that doc tests in the README.md file get run.
 #[doc(hidden)]
 mod test_readme {
