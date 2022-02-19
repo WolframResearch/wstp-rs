@@ -17,6 +17,19 @@
 //! ```
 //!
 //! [WolframKernel]: https://reference.wolfram.com/language/ref/program/WolframKernel.html
+//!
+//! # Related Links
+//!
+//! #### Wolfram Language documentation
+//!
+//! These resources describe the packet expression interface used by the Wolfram Kernel.
+//!
+//! * [WSTP Packets](https://reference.wolfram.com/language/guide/WSTPPackets.html)
+//! * [Running the Wolfram System from within an External Program](https://reference.wolfram.com/language/tutorial/RunningTheWolframSystemFromWithinAnExternalProgram.html)
+//!
+//! #### Link packet methods
+//!
+//! * [`Link::put_eval_packet()`]
 
 use std::{path::PathBuf, process};
 
