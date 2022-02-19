@@ -32,7 +32,7 @@ fn test_loopback_get_put_atoms() {
         // Test the `Link::get_string_ref()` method.
         link.put_expr(&Expr::string("Hello!")).unwrap();
         let link_str: LinkStr = link.get_string_ref().unwrap();
-        assert_eq!(link_str.to_str(), "Hello!")
+        assert_eq!(link_str.as_str(), "Hello!")
     }
 
     {
@@ -40,7 +40,7 @@ fn test_loopback_get_put_atoms() {
         link.put_expr(&Expr::symbol(Symbol::new("System`Plot")))
             .unwrap();
         let link_str: LinkStr = link.get_symbol_ref().unwrap();
-        assert_eq!(link_str.to_str(), "System`Plot")
+        assert_eq!(link_str.as_str(), "System`Plot")
     }
 }
 
@@ -68,7 +68,7 @@ fn test_loopback_idempotence_of_get_arg_count() {
     }
 
     assert_eq!(
-        link.get_string_ref().map(|s| s.to_str().to_owned()),
+        link.get_string_ref().map(|s| s.as_str().to_owned()),
         Ok(String::from("List"))
     );
 }
@@ -104,7 +104,7 @@ fn test_loopback_basic_put_and_get_list() {
     assert_eq!(link.raw_get_next(), Ok(sys::WSTKFUNC.into()));
     assert_eq!(link.get_arg_count(), Ok(1));
     assert_eq!(
-        link.get_string_ref().map(|s| s.to_str().to_owned()),
+        link.get_string_ref().map(|s| s.as_str().to_owned()),
         Ok(String::from("List"))
     );
     assert_eq!(link.get_i64(), Ok(10));
@@ -176,7 +176,7 @@ fn test_loopback_transfer_simple() {
     let mut new = Link::new_loopback().unwrap();
     link.transfer_to_end_of_loopback_link(&mut new).unwrap();
 
-    assert_eq!(new.get_string_ref().unwrap().to_str(), "hello");
+    assert_eq!(new.get_string_ref().unwrap().as_str(), "hello");
 }
 
 #[test]
