@@ -177,7 +177,7 @@ pub use wstp_sys as sys;
 pub use crate::{
     env::shutdown,
     error::Error,
-    get::{Array, LinkStr},
+    get::{Array, LinkStr, Token, TokenType},
     link_server::LinkServer,
     strx::{Ucs2Str, Utf16Str, Utf32Str, Utf8Str},
 };

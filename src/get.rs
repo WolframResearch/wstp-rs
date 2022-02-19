@@ -13,6 +13,46 @@ use crate::{
     Error, Link, Utf16Str, Utf32Str, Utf8Str,
 };
 
+/// Basic unit of expression data read from a [`Link`].
+///
+/// [`Link::get_token()`] is used to read the next available token from a [`Link`].
+#[allow(missing_docs)]
+#[derive(Debug)]
+pub enum Token<'link> {
+    Integer(i64),
+    Real(f64),
+    Symbol(LinkStr<'link>),
+    String(LinkStr<'link>),
+
+    /// A function expression with `length` elements.
+    ///
+    /// The next expression is the head of the function, followed by `length` number of
+    /// expression elements.
+    Function {
+        length: usize,
+    },
+}
+
+/// The type of a token available to read from a [`Link`].
+///
+/// See also [`Token`].
+///
+/// See the [`WSGetType()`](https://reference.wolfram.com/language/ref/c/WSGetType.html)
+/// documentation for a listing of WSTP token types.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TokenType {
+    /// [`WSTKINT`][sys::WSTKINT]
+    Integer,
+    /// [`WSTKREAL`][sys::WSTKREAL]
+    Real,
+    /// [`WSTKSYM`][sys::WSTKSYM]
+    Symbol,
+    /// [`WSTKSTR`][sys::WSTKSTR]
+    String,
+    /// [`WSTKFUNC`][sys::WSTKFUNC]
+    Function,
+}
+
 /// String borrowed from a [`Link`].
 ///
 /// `LinkStr` is returned from:
@@ -67,13 +107,73 @@ pub unsafe trait LinkStrType: fmt::Debug {
 //======================================
 
 impl Link {
-    /// TODO: Augment this function with a `get_type()` method which returns a
-    ///       (non-exhaustive) enum value.
+    /// Get the type of the next token available to read on this link.
+    ///
+    /// See also [`Link::get_token()`].
+    pub fn get_type(&self) -> Result<TokenType, Error> {
+        use wstp_sys::{WSTKFUNC, WSTKINT, WSTKREAL, WSTKSTR, WSTKSYM};
+
+        let type_: i32 = self.get_raw_type()?;
+
+        let token_type = match u8::try_from(type_).unwrap() {
+            WSTKINT => TokenType::Integer,
+            WSTKREAL => TokenType::Real,
+            WSTKSTR => TokenType::String,
+            WSTKSYM => TokenType::Symbol,
+            WSTKFUNC => TokenType::Function,
+            _ => return Err(Error::custom(format!("unknown WSLINK type: {}", type_))),
+        };
+
+        Ok(token_type)
+    }
+
+    /// Read the next token from this link.
+    ///
+    /// See also [`Link::get_type()`].
+    ///
+    /// # Example
+    ///
+    /// Read the expression `{5, "second", foo}` from a link one [`Token`] at a time:
+    ///
+    /// ```
+    /// use wstp::{Link, Token};
+    ///
+    /// // Put {5, "second", foo}
+    /// let mut link = Link::new_loopback().unwrap();
+    /// link.put_function("System`List", 3).unwrap();
+    /// link.put_i64(5).unwrap();
+    /// link.put_str("second").unwrap();
+    /// link.put_symbol("Global`foo").unwrap();
+    ///
+    /// // Read it back
+    /// assert!(matches!(link.get_token().unwrap(), Token::Function { length: 3 }));
+    /// assert!(matches!(link.get_token().unwrap(), Token::Symbol(s) if s.as_str() == "System`List"));
+    /// assert!(matches!(link.get_token().unwrap(), Token::Integer(5)));
+    /// assert!(matches!(link.get_token().unwrap(), Token::String(s) if s.as_str() == "second"));
+    /// assert!(matches!(link.get_token().unwrap(), Token::Symbol(s) if s.as_str() == "Global`foo"));
+    /// ```
+    pub fn get_token(&mut self) -> Result<Token, Error> {
+        let token = match self.get_type()? {
+            TokenType::Integer => Token::Integer(self.get_i64()?),
+            TokenType::Real => Token::Real(self.get_f64()?),
+            TokenType::String => Token::String(self.get_string_ref()?),
+            TokenType::Symbol => Token::Symbol(self.get_symbol_ref()?),
+            TokenType::Function => Token::Function {
+                length: self.get_arg_count()?,
+            },
+        };
+
+        Ok(token)
+    }
+
+    /// Get the raw type of the next token available to read on this link.
     ///
     /// If the returned type is [`WSTKERR`][sys::WSTKERR], an error is returned.
     ///
+    /// See also [`Link::get_type()`].
+    ///
     /// *WSTP C API Documentation:* [`WSGetType()`](https://reference.wolfram.com/language/ref/c/WSGetType.html)
-    pub fn get_raw_type(&mut self) -> Result<i32, Error> {
+    pub fn get_raw_type(&self) -> Result<i32, Error> {
         let type_ = unsafe { sys::WSGetType(self.raw_link) };
 
         if type_ == sys::WSTKERR {
