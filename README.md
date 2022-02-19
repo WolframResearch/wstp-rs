@@ -135,8 +135,9 @@ Licensed under either of
 
 at your option.
 
-Note: Licensing of the WSTP library linked by the [wstp] crate is covered by the terms of
-the [MathLink License Agreement](https://www.wolfram.com/legal/agreements/mathlink.html).
+Note: Licensing of the WSTP library linked by the [wstp](https://crates.io/crates/wstp)
+crate is covered by the terms of the
+[MathLink License Agreement](https://www.wolfram.com/legal/agreements/mathlink.html).
 
 ## Contribution
 
