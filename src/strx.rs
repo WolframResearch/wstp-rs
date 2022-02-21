@@ -102,8 +102,8 @@ impl Utf16Str {
         Ok(unsafe { Utf16Str::from_utf16_unchecked(utf16) })
     }
 
-    /// Converts a slice of bytes to a `Utf16` without validating that the slice
-    /// contains valid UTF-8 encoded data.
+    /// Converts a slice of bytes to a [`Utf16Str`] without validating that the slice
+    /// contains valid UTF-16 encoded data.
     pub unsafe fn from_utf16_unchecked(utf16: &[u16]) -> &Utf16Str {
         const _: () = assert!(mem::size_of::<&Utf16Str>() == mem::size_of::<&[u16]>());
         const _: () = assert!(mem::align_of::<&Utf16Str>() == mem::align_of::<&[u16]>());
@@ -125,8 +125,8 @@ impl Utf16Str {
 //--------------------------------------
 
 impl Utf32Str {
-    /// Converts a slice of bytes to a `Utf32` without validating that the slice
-    /// contains valid UTF-8 encoded data.
+    /// Converts a slice of bytes to a [`Utf32Str`] without validating that the slice
+    /// contains valid UTF-32 encoded data.
     pub unsafe fn from_utf32_unchecked(utf32: &[u32]) -> &Utf32Str {
         const _: () = assert!(mem::size_of::<&Utf32Str>() == mem::size_of::<&[u32]>());
         const _: () = assert!(mem::align_of::<&Utf32Str>() == mem::align_of::<&[u32]>());
