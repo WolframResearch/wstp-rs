@@ -10,4 +10,4 @@ extern crate link_cplusplus;
 
 
 // The name of this file comes from `build.rs`.
-include!(concat!("../", env!("CRATE_WSTP_SYS_BINDINGS")));
+include!(env!("CRATE_WSTP_SYS_BINDINGS"));
