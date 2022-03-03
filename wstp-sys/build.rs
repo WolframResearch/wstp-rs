@@ -52,61 +52,7 @@ fn main() {
     // Link to WSTP
     //-------------
 
-    // Path to the WSTP static library file.
-    let static_lib = &app
-        .wstp_static_library_path()
-        .expect("unable to get WSTP static library path");
-
-    link_wstp_statically(&static_lib);
-
-    //
-    // Link to the C++ standard library, required by WSTP
-    //
-
-    // Note: This is now handled by the `link-cplusplus` crate dependency.
-
-    // Note: This blog post explained this, and that this might need to change on Linux.
-    //         https://flames-of-code.netlify.com/blog/rust-and-cmake-cplusplus/
-    // println!("cargo:rustc-link-lib=dylib=c++");
-
-    //-----------------------------------
-    // Link to WSTP "interface" libraries
-    //-----------------------------------
-
-    // The CompilerAdditions/WSTP-targets.cmake file describes the dependencies
-    // of the WSTP library that must be linked into the final artifact for any
-    // code that depends on WSTP. (The contents of that file differ on each
-    // platform). They are the `INTERFACE_LINK_LIBRARIES` of the
-    // `WSTP::STATIC_LIBRARY` CMake target.
-    //
-    // On macOS, the Foundation framework is the only dependency. On Windows,
-    // several system libraries must be linked.
-    //
-    // FIXME: Update this logic to cover the Linux interface libraries.
-
-    //
-    // macOS
-    //
-
-    // TODO: Look at the complete list of CMake libraries required by WSTP and update this
-    //       logic for Windows and Linux.
-    if cfg!(target_os = "macos") {
-        println!("cargo:rustc-link-lib=framework=Foundation");
-    }
-
-    //
-    // Windows
-    //
-
-    if cfg!(target_os = "windows") {
-        println!("cargo:rustc-link-lib=dylib=kernel32");
-        println!("cargo:rustc-link-lib=dylib=user32");
-        println!("cargo:rustc-link-lib=dylib=advapi32");
-        println!("cargo:rustc-link-lib=dylib=comdlg32");
-        println!("cargo:rustc-link-lib=dylib=ws2_32");
-        println!("cargo:rustc-link-lib=dylib=wsock32");
-        println!("cargo:rustc-link-lib=dylib=rpcrt4");
-    }
+    link_to_wstp(&app);
 
     //---------------------------------------------------------------
     // Choose the pre-generated bindings to use for the target system
@@ -165,6 +111,71 @@ fn make_bindings_path(wolfram_version: &str, system_id: &str) -> PathBuf {
         .join("WSTP_bindings.rs");
 
     bindings_path
+}
+
+//======================================
+// Link to WSTP
+//======================================
+
+/// Emits the necessary `cargo` instructions to link to the WSTP static library,
+/// and also links the WSTP interface libraries (the libraries that WSTP itself
+/// depends on).
+fn link_to_wstp(app: &WolframApp) {
+    // Path to the WSTP static library file.
+    let static_lib = &app
+        .wstp_static_library_path()
+        .expect("unable to get WSTP static library path");
+
+    link_wstp_statically(&static_lib);
+
+    //
+    // Link to the C++ standard library, required by WSTP
+    //
+
+    // Note: This is now handled by the `link-cplusplus` crate dependency.
+
+    // Note: This blog post explained this, and that this might need to change on Linux.
+    //         https://flames-of-code.netlify.com/blog/rust-and-cmake-cplusplus/
+    // println!("cargo:rustc-link-lib=dylib=c++");
+
+    //-----------------------------------
+    // Link to WSTP "interface" libraries
+    //-----------------------------------
+
+    // The CompilerAdditions/WSTP-targets.cmake file describes the dependencies
+    // of the WSTP library that must be linked into the final artifact for any
+    // code that depends on WSTP. (The contents of that file differ on each
+    // platform). They are the `INTERFACE_LINK_LIBRARIES` of the
+    // `WSTP::STATIC_LIBRARY` CMake target.
+    //
+    // On macOS, the Foundation framework is the only dependency. On Windows,
+    // several system libraries must be linked.
+    //
+    // FIXME: Update this logic to cover the Linux interface libraries.
+
+    //
+    // macOS
+    //
+
+    // TODO: Look at the complete list of CMake libraries required by WSTP and update this
+    //       logic for Windows and Linux.
+    if cfg!(target_os = "macos") {
+        println!("cargo:rustc-link-lib=framework=Foundation");
+    }
+
+    //
+    // Windows
+    //
+
+    if cfg!(target_os = "windows") {
+        println!("cargo:rustc-link-lib=dylib=kernel32");
+        println!("cargo:rustc-link-lib=dylib=user32");
+        println!("cargo:rustc-link-lib=dylib=advapi32");
+        println!("cargo:rustc-link-lib=dylib=comdlg32");
+        println!("cargo:rustc-link-lib=dylib=ws2_32");
+        println!("cargo:rustc-link-lib=dylib=wsock32");
+        println!("cargo:rustc-link-lib=dylib=rpcrt4");
+    }
 }
 
 fn link_wstp_statically(lib: &PathBuf) {
