@@ -4,7 +4,7 @@
 //!
 //! [dependencies]
 //! bindgen = "^0.58.1"
-//! wolfram-app-discovery = "0.2.0"
+//! wolfram-app-discovery = "0.2.1"
 //! ```
 
 use std::path::PathBuf;
