@@ -49,7 +49,6 @@ fn main() {
     }
 
 
-
     let app = WolframApp::try_default().expect("unable to locate WolframApp");
 
     //-------------
@@ -96,11 +95,17 @@ fn main() {
 
 /// Use bindings that we generate now at compile time.
 fn use_generated_bindings(app: &WolframApp) -> PathBuf {
-    let wstp_h = app.wstp_c_header_path().expect("unable to get 'wstp.h' location");
+    let wstp_h = app
+        .wstp_c_header_path()
+        .expect("unable to get 'wstp.h' location");
 
-    println!("cargo:warning=info: generating WSTP bindings from: {}", wstp_h.display());
+    println!(
+        "cargo:warning=info: generating WSTP bindings from: {}",
+        wstp_h.display()
+    );
 
-    let out_path = PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("WSTP_bindings.rs");
+    let out_path =
+        PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("WSTP_bindings.rs");
 
     generate_and_save_bindings_to_file(&wstp_h, &out_path);
 
