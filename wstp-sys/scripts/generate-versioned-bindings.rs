@@ -25,26 +25,6 @@ fn generate_bindings(app: &WolframApp) {
         .wstp_c_header_path()
         .expect("unable to get 'wstp.h' location");
 
-    assert!(wstp_h.file_name().unwrap() == "wstp.h");
-
-    let bindings = bindgen::Builder::default()
-        .header(wstp_h.display().to_string())
-        .generate_comments(true)
-        // NOTE: At time of writing this will silently fail to work if you are using a
-        //       nightly version of Rust, making the generated bindings almost impossible
-        //       to decipher.
-        //
-        //       Instead, use `$ cargo doc --document-private-items && open target/doc` to
-        //       have a look at the generated documentation, which is easier to read and
-        //       navigate anyway.
-        .rustfmt_bindings(true)
-        // Force the WSE* error macro definitions to be interpreted as signed constants.
-        // WSTP uses `int` as it's error type, so this is necessary to avoid having to
-        // scatter `as i32` everywhere.
-        .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
-        .generate()
-        .expect("unable to generate Rust bindings to WSTP using bindgen");
-
     let version: WolframVersion =
         app.wolfram_version().expect("unable to get WolframVersion");
 
@@ -55,12 +35,7 @@ fn generate_bindings(app: &WolframApp) {
         .join(wolfram_app_discovery::target_system_id())
         .join(FILENAME);
 
-    std::fs::create_dir_all(out_path.parent().unwrap())
-        .expect("failed to create parent directories for generating bindings file");
-
-    bindings
-        .write_to_file(&out_path)
-        .expect("failed to write Rust bindings with IO error");
+    let () = generate_and_save_bindings_to_file(&wstp_h, &out_path);
 
     println!(
         "
@@ -86,4 +61,26 @@ fn generate_bindings(app: &WolframApp) {
 fn out_dir() -> PathBuf {
     // TODO: Provide a way to override this location using an environment variable.
     std::env::current_dir().expect("unable to get process current working directory")
+}
+
+fn generate_and_save_bindings_to_file(wstp_h: &PathBuf, out_path: &PathBuf) {
+    assert!(wstp_h.file_name().unwrap() == "wstp.h");
+
+    let bindings = bindgen::Builder::default()
+        .header(wstp_h.display().to_string())
+        .generate_comments(true)
+        .rustfmt_bindings(true)
+        // Force the WSE* error macro definitions to be interpreted as signed constants.
+        // WSTP uses `int` as it's error type, so this is necessary to avoid having to
+        // scatter `as i32` everywhere.
+        .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
+        .generate()
+        .expect("unable to generate Rust bindings to WSTP using bindgen");
+
+    std::fs::create_dir_all(out_path.parent().unwrap())
+        .expect("failed to create parent directories for generating bindings file");
+
+    bindings
+        .write_to_file(&out_path)
+        .expect("failed to write Rust bindings with IO error");
 }
