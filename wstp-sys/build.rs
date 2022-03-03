@@ -76,7 +76,7 @@ fn main() {
     // The CompilerAdditions/WSTP-targets.cmake file describes the dependencies
     // of the WSTP library that must be linked into the final artifact for any
     // code that depends on WSTP. (The contents of that file differ on each
-    // platform). They are the `INTERFACE_LINK_PROPERTIES` of the
+    // platform). They are the `INTERFACE_LINK_LIBRARIES` of the
     // `WSTP::STATIC_LIBRARY` CMake target.
     //
     // On macOS, the Foundation framework is the only dependency. On Windows,
