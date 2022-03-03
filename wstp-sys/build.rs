@@ -8,7 +8,7 @@
 use std::path::PathBuf;
 use std::process;
 
-use wolfram_app_discovery::WolframApp;
+use wolfram_app_discovery::{WolframApp, WolframVersion};
 
 fn main() {
     // This crate is being built by docs.rs. Skip trying to locate a WolframApp.
@@ -63,6 +63,15 @@ fn main() {
     let wolfram_version = app
         .wolfram_version()
         .expect("unable to get Wolfram Language vesion number");
+
+    use_pregenerated_bindings(&wolfram_version);
+}
+
+//========================================================================
+// Tell `lib.rs` where to find the file containing the WSTP Rust bindings.
+//========================================================================
+
+fn use_pregenerated_bindings(wolfram_version: &WolframVersion) {
     let system_id =
         wolfram_app_discovery::system_id_from_target(&std::env::var("TARGET").unwrap())
             .expect("unable to get System ID for target system");
