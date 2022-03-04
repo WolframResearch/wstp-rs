@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] – 2022-03-04
+
+### Fixed
+
+* Fixed documentation build failure in the docs.rs build environment.  ([#32])
+
+
+
 ## [0.2.0] – 2022-03-03
 
 ### Added
@@ -147,10 +155,14 @@ Initial release of the [`wstp`](https://crates.io/crates/wstp) crate.
 [#29]: https://github.com/WolframResearch/wstp-rs/pull/29
 [#30]: https://github.com/WolframResearch/wstp-rs/pull/30
 
+<!-- v0.2.1 -->
+[#32]: https://github.com/WolframResearch/wstp-rs/pull/32
+
 
 <!-- This needs to be updated for each tagged release. -->
-[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.1...HEAD
 
+[0.2.1]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/WolframResearch/wstp-rs/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/WolframResearch/wstp-rs/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/WolframResearch/wstp-rs/compare/v0.1.2...v0.1.3
