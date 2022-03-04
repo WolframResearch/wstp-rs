@@ -155,10 +155,7 @@ fn use_pregenerated_bindings(wolfram_version: &WolframVersion) -> PathBuf {
 
     println!("cargo:rerun-if-changed={}", bindings_path.display());
 
-    let absolute_bindings_path =
-        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap()).join(&bindings_path);
-
-    if !absolute_bindings_path.is_file() {
+    if !bindings_path.is_file() {
         println!(
             "
     ==== ERROR: wstp-sys =====
@@ -179,7 +176,7 @@ fn use_pregenerated_bindings(wolfram_version: &WolframVersion) -> PathBuf {
         panic!("<See printed error>");
     }
 
-    absolute_bindings_path
+    bindings_path
 }
 
 fn make_bindings_path(wolfram_version: &str, system_id: &str) -> PathBuf {
@@ -188,7 +185,10 @@ fn make_bindings_path(wolfram_version: &str, system_id: &str) -> PathBuf {
         .join(system_id)
         .join("WSTP_bindings.rs");
 
-    bindings_path
+    let absolute_bindings_path =
+        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap()).join(&bindings_path);
+
+    absolute_bindings_path
 }
 
 //======================================
