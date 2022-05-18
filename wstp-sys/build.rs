@@ -260,7 +260,9 @@ fn link_wstp_statically(lib: &PathBuf) {
     let mut lib = lib.clone();
 
     if cfg!(all(target_os = "macos", target_arch = "x86_64")) {
-        lib = lipo_native_library(&lib);
+        lib = lipo_native_library(&lib, "x86_64");
+    } else if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        lib = lipo_native_library(&lib, "arm64");
     }
 
     link_library_file(lib);
@@ -288,7 +290,7 @@ fn link_wstp_statically(lib: &PathBuf) {
 /// file with multiple copies of the same library, each for a different target
 /// architecture. The `lipo -thin` command creates a new archive which contains just
 /// the library for the named architecture.
-fn lipo_native_library(wstp_lib: &PathBuf) -> PathBuf {
+fn lipo_native_library(wstp_lib: &PathBuf, lipo_arch: &str) -> PathBuf {
     let wstp_lib = wstp_lib
         .to_str()
         .expect("could not convert WSTP archive path to str");
@@ -310,13 +312,13 @@ fn lipo_native_library(wstp_lib: &PathBuf) -> PathBuf {
     }
 
     // Place the lipo'd library file in the system temporary directory.
-    let output_lib = std::env::temp_dir().join("libWSTP-x86-64.a");
+    let output_lib = std::env::temp_dir().join("libWSTP-thin.a");
     let output_lib = output_lib
         .to_str()
         .expect("could not convert WSTP archive path to str");
 
     let output = process::Command::new("lipo")
-        .args(&[wstp_lib, "-thin", "x86_64", "-output", output_lib])
+        .args(&[wstp_lib, "-thin", lipo_arch, "-output", output_lib])
         .output()
         .expect("failed to invoke macOS `lipo` command");
 
