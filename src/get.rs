@@ -792,6 +792,7 @@ unsafe impl LinkStrType for Utf32Str {
 /// * [`Link::get_i64_array()`]
 /// * [`Link::get_i32_array()`]
 /// * [`Link::get_i16_array()`]
+/// * [`Link::get_u8_array()`]
 /// * [`Link::get_f64_array()`]
 /// * [`Link::get_f32_array()`]
 pub struct Array<'link, T> {
