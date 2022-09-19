@@ -609,7 +609,7 @@ impl Link {
         Ok(Array {
             link: self,
             data_ptr,
-            release_callback: Box::new(move |link: &Link| unsafe {
+            release_callback: Box::new(move |link: &Link| {
                 WSReleaseTArray(
                     link.raw_link,
                     data_ptr,

@@ -13,7 +13,7 @@ use wolfram_app_discovery::{WolframApp, WolframVersion};
 fn main() {
     // Ensure that changes to environment variables checked by wolfram-app-discovery will
     // cause cargo to rebuild the current crate.
-    wolfram_app_discovery::config::set_print_cargo_build_script_instructions(true);
+    wolfram_app_discovery::config::set_print_cargo_build_script_directives(true);
 
     // This crate is being built by docs.rs. Skip trying to locate a WolframApp.
     // See: https://docs.rs/about/builds#detecting-docsrs
@@ -49,13 +49,13 @@ fn main() {
     }
 
 
-    let app = WolframApp::try_default().expect("unable to locate WolframApp");
+    let app = WolframApp::try_default().ok();
 
     //-------------
     // Link to WSTP
     //-------------
 
-    link_to_wstp(&app);
+    link_to_wstp(app.as_ref());
 
     //----------------------------------------------------
     // Generate or use pre-generated Rust bindings to WSTP
@@ -63,7 +63,7 @@ fn main() {
     // See docs/Development.md for instructions on how to pre-generate
     // bindings for new WL versions.
 
-    let bindings_path = use_generated_bindings(&app);
+    let bindings_path = use_generated_bindings(app.as_ref());
 
     // TODO: Make use of pre-generated bindings useable via a feature flag?
     //       Using pre-generated bindings seems to currently only have a distinct
@@ -94,10 +94,10 @@ fn main() {
 //-----------------------------------
 
 /// Use bindings that we generate now at compile time.
-fn use_generated_bindings(app: &WolframApp) -> PathBuf {
-    let wstp_h = app
-        .wstp_c_header_path()
-        .expect("unable to get 'wstp.h' location");
+fn use_generated_bindings(app: Option<&WolframApp>) -> PathBuf {
+    let wstp_h = wolfram_app_discovery::build_scripts::wstp_c_header_path(app)
+        .expect("unable to get 'wstp.h' location")
+        .into_path_buf();
 
     println!(
         "cargo:warning=info: generating WSTP bindings from: {}",
@@ -198,11 +198,11 @@ fn make_bindings_path(wolfram_version: &str, system_id: &str) -> PathBuf {
 /// Emits the necessary `cargo` instructions to link to the WSTP static library,
 /// and also links the WSTP interface libraries (the libraries that WSTP itself
 /// depends on).
-fn link_to_wstp(app: &WolframApp) {
+fn link_to_wstp(app: Option<&WolframApp>) {
     // Path to the WSTP static library file.
-    let static_lib = &app
-        .wstp_static_library_path()
-        .expect("unable to get WSTP static library path");
+    let static_lib = wolfram_app_discovery::build_scripts::wstp_static_library_path(app)
+        .expect("unable to get WSTP static library path")
+        .into_path_buf();
 
     link_wstp_statically(&static_lib);
 
