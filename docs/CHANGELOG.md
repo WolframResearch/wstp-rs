@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+
+
+
+
+## [0.2.3] – 2022-09-19
+
+### Changed
+
+* Mention `get_u8_array()` in the `Array` type doc comment. ([#36])
+
+* Update `wolfram-app-discovery` dependency from 0.2.1 to v0.3.0, to take
+  advantage of the improved flexiblity of new API functions tailored for use
+  from build scripts. ([#37])
+
+
+
 ## [0.2.2] – 2022-05-17
 
 ### Fixed
@@ -169,10 +186,15 @@ Initial release of the [`wstp`](https://crates.io/crates/wstp) crate.
 <!-- v0.2.2 -->
 [#34]: https://github.com/WolframResearch/wstp-rs/pull/34
 
+<!-- v0.2.3 -->
+[#36]: https://github.com/WolframResearch/wstp-rs/pull/36
+[#37]: https://github.com/WolframResearch/wstp-rs/pull/37
+
 
 <!-- This needs to be updated for each tagged release. -->
-[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.3...HEAD
 
+[0.2.3]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/WolframResearch/wstp-rs/compare/v0.1.4...v0.2.0
