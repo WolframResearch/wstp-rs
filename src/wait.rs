@@ -119,7 +119,7 @@ impl Link {
             }
 
             // Drop the closure value.
-            Box::from_raw(boxed_closure_ptr);
+            drop(Box::from_raw(boxed_closure_ptr));
         };
 
         match result {
