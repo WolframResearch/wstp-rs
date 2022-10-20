@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [0.2.4] – 2022-10-19
+
+### Fixed
+
+* Fix `` could not find `private` in `ref_cast` `` compile errors that recently
+  started occurring to due to changes to semver-exempt private items in the
+  `ref-cast` dependency of `wstp`. ([#39])
+
+  Fortunately, the `ref-cast` crate recently gained a `#[ref_cast_custom]`
+  macro, which is the missing feature that had originally required `wstp` to
+  depend on private internal details of `ref-cast` as a workaround.
+
+
 
 ## [0.2.3] – 2022-09-19
 
@@ -190,10 +203,14 @@ Initial release of the [`wstp`](https://crates.io/crates/wstp) crate.
 [#36]: https://github.com/WolframResearch/wstp-rs/pull/36
 [#37]: https://github.com/WolframResearch/wstp-rs/pull/37
 
+<!-- v0.2.4 -->
+[#39]: https://github.com/WolframResearch/wstp-rs/pull/39
+
 
 <!-- This needs to be updated for each tagged release. -->
-[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.4...HEAD
 
+[0.2.4]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.0...v0.2.1
