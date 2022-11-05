@@ -229,9 +229,7 @@ impl Link {
     ///
     /// * The [`Link`] type is a `#[repr(transparent)]` wrapper around around a
     ///   single field of type [`WSLINK`][crate::sys::WSLINK].
-    #[inline]
     #[ref_cast::ref_cast_custom]
-    #[allow(unused_unsafe)]
     pub unsafe fn unchecked_ref_cast_mut(from: &mut WSLINK) -> &mut Self;
 }
 
