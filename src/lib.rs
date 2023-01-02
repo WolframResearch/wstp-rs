@@ -41,24 +41,26 @@
 //! Transfer the expression `"hello!"` from one [`Link`] endpoint to another:
 //!
 //! ```
-//! use std::{thread, time::Duration};
+//! use std::thread;
 //! use wstp::{Link, Protocol};
 //!
-//! // Start a background thread with a listen()'ing link.
-//! let listening_thread = thread::spawn(|| {
-//!     // This will block until an incoming connection is made.
-//!     let mut link = Link::listen(Protocol::SharedMemory, "my-link").unwrap();
+//! let mut link_a = Link::listen(Protocol::SharedMemory, "").unwrap();
+//! let name = link_a.link_name();
 //!
-//!     link.put_str("hello!").unwrap();
+//! // Start a background thread with the listen()'ing link.
+//! let listening_thread = thread::spawn(move || {
+//!     // This will block until connect() is called.
+//!     link_a.activate().unwrap();
+//!
+//!     link_a.put_str("hello!").unwrap();
 //! });
 //!
-//! // Give the listening thread time to start before we
-//! // try to connect to it.
-//! thread::sleep(Duration::from_millis(20));
-//!
-//! let mut link = Link::connect(Protocol::SharedMemory, "my-link").unwrap();
-//! assert_eq!(link.get_string().unwrap(), "hello!");
+//! // Connect to the listening link and read data from it.
+//! let mut link_b = Link::connect(Protocol::SharedMemory, &name).unwrap();
+//! assert_eq!(link_b.get_string().unwrap(), "hello!");
 //! ```
+//!
+//! See also: [`channel()`]
 //!
 //! # What is WSTP?
 //!
@@ -472,6 +474,45 @@ impl Link {
     pub fn close(self) {
         // Note: The link is closed when `self` is dropped.
     }
+}
+
+/// Create a full-duplex WSTP communication channel with two [`Link`] endpoints.
+///
+/// This function is a convenient alternative to manually using
+/// [`Link::listen()`] and [`Link::connect()`] to create a channel.
+///
+/// # Example
+///
+/// Construct a channel, and send data in both directions:
+///
+/// ```
+/// use wstp::Protocol;
+///
+/// let (mut a, mut b) = wstp::channel(Protocol::SharedMemory).unwrap();
+///
+/// a.put_str("from a to b").unwrap();
+/// a.flush().unwrap();
+///
+/// b.put_str("from b to a").unwrap();
+/// b.flush().unwrap();
+///
+/// assert_eq!(a.get_string().unwrap(), "from b to a");
+/// assert_eq!(b.get_string().unwrap(), "from a to b");
+/// ```
+pub fn channel(protocol: Protocol) -> Result<(Link, Link), Error> {
+    let mut listener = Link::listen(protocol.clone(), "")?;
+    let mut connecter = Link::connect(protocol, &listener.link_name())?;
+
+    let listener = std::thread::spawn(move || {
+        let () = listener.activate()?;
+        Ok(listener)
+    });
+
+    let () = connecter.activate()?;
+
+    let listener = listener.join().expect("listener thread panicked")?;
+
+    Ok((listener, connecter))
 }
 
 /// # Link properties

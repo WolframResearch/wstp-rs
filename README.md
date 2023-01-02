@@ -56,23 +56,14 @@ example();
 Transfer the expression `"hello!"` from one [`Link`][Link] endpoint to another:
 
 ```rust
-use std::{thread, time::Duration};
-use wstp::{Link, Protocol};
+use wstp::Protocol;
 
-// Start a background thread with a listen()'ing link.
-let listening_thread = thread::spawn(|| {
-    // This will block until an incoming connection is made.
-    let mut link = Link::listen(Protocol::SharedMemory, "my-link").unwrap();
+let (mut a, mut b) = wstp::channel(Protocol::SharedMemory).unwrap();
 
-    link.put_str("hello!").unwrap();
-});
+a.put_str("hello!").unwrap();
+a.flush().unwrap();
 
-// Give the listening thread time to start before we
-// try to connect to it.
-thread::sleep(Duration::from_millis(20));
-
-let mut link = Link::connect(Protocol::SharedMemory, "my-link").unwrap();
-assert_eq!(link.get_string().unwrap(), "hello!");
+assert_eq!(b.get_string().unwrap(), "hello!");
 ```
 
 See [`wolfram-library-link`][wolfram-library-link] for
