@@ -105,13 +105,10 @@ impl WolframKernelProcess {
     // TODO: Would it be correct to describe this as essentially `LinkLaunch`? Also note
     //       that this doesn't actually use `-linkmode launch`.
     pub fn launch(path: &PathBuf) -> Result<WolframKernelProcess, Error> {
-        // FIXME: Make this a random string.
-        const NAME: &str = "SHM_WK_LINK";
+        let mut link = Link::listen(Protocol::SharedMemory, "")?;
 
-        let listener = std::thread::spawn(|| {
-            // This will block until a connection is made.
-            Link::listen(Protocol::SharedMemory, NAME)
-        });
+        let name = link.link_name();
+        assert!(!name.is_empty());
 
         let kernel_process = process::Command::new(path)
             .arg("-wstp")
@@ -119,18 +116,20 @@ impl WolframKernelProcess {
             .arg("SharedMemory")
             .arg("-linkconnect")
             .arg("-linkname")
-            .arg(NAME)
+            .arg(&name)
             .spawn()?;
 
-        let link: Link = match listener.join() {
-            Ok(result) => result?,
-            Err(panic) => {
-                return Err(Error(format!(
-                    "unable to launch Wolfram Kernel: listening thread panicked: {:?}",
-                    panic
-                )))
-            },
-        };
+        // Wait for an incoming connection to be made to the listening link.
+        // This will block until a connection is made.
+        //
+        // FIXME: This currently has an infinite timeout. If the spawned
+        //        process fails to connect for some reason (e.g. a launched
+        //        Kernel doesn't start due to a licensing error), this will
+        //        just wait forever, hanging the current program.
+        //
+        //        TODO: Set a yield function that will abort if a timeout
+        //              duration is reached.
+        let () = link.activate()?;
 
         Ok(WolframKernelProcess {
             process: kernel_process,

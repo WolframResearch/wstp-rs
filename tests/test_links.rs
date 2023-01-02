@@ -116,6 +116,42 @@ fn test_shared_memory_name_taken_error() {
     assert_eq!(b.unwrap_err().code().unwrap(), sys::MLENAMETAKEN);
 }
 
+#[test]
+fn test_link_listen_does_not_block_for_connection() {
+    // This test is successful by not hanging.
+    let _link = Link::listen(Protocol::SharedMemory, "".into()).unwrap();
+
+    // This *would* hang unless and until a Link::connect(..) is done:
+    //   link.activate()
+}
+
+// Test that two SharedMemory links can get and put between each other on a
+// single thread.
+#[test]
+fn test_single_thread_duplex_links() {
+    let mut a = Link::listen(Protocol::SharedMemory, "").unwrap();
+    let mut b = Link::connect(Protocol::SharedMemory, &a.link_name()).unwrap();
+
+    // Activation still requires a second thread.
+    let a = std::thread::spawn(move || {
+        a.activate().unwrap();
+        a
+    });
+
+    let () = b.activate().unwrap();
+
+    let mut a = a.join().unwrap();
+
+    a.put_str("from a to b").unwrap();
+    a.flush().unwrap();
+
+    b.put_str("from b to a").unwrap();
+    b.flush().unwrap();
+
+    assert_eq!(a.get_string().unwrap(), "from b to a");
+    assert_eq!(b.get_string().unwrap(), "from a to b");
+}
+
 //======================================
 // TCPIP
 //======================================
