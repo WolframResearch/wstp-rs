@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use once_cell::sync::Lazy;
 
-use wstp::{sys, Link, Protocol};
+use wstp::{sys, Link, Protocol, UrgentMessage};
 
 /// Guard used to ensure the tests which bind to a port are run sequentially, so that
 /// port is free for each test.
@@ -390,5 +390,29 @@ fn test_mismatched_type_error() {
     assert_eq!(
         link.get_i64().map_err(|err| err.code()),
         Err(Some(sys::MLEGSEQ))
+    );
+}
+
+//--------------------------------------
+// Test sending urgent messages
+//--------------------------------------
+
+#[test]
+fn test_urgent_messages() {
+    let (mut a, mut b) = wstp::channel(Protocol::SharedMemory).unwrap();
+
+    a.put_message(UrgentMessage::ABORT).unwrap();
+
+    assert_eq!(b.get_message(), Some(UrgentMessage::ABORT));
+
+    b.put_message(UrgentMessage {
+        code: 500,
+        param: 123,
+    })
+    .unwrap();
+
+    assert_eq!(
+        a.get_message(),
+        Some(UrgentMessage::new_with_param(500, 123))
     );
 }

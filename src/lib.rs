@@ -69,6 +69,7 @@
 //! * The WSTP *protocol*
 //! * The WSTP *library*, which provides the canonical implementation of the protocol via
 //!   a C API.
+//TODO:  * The WSTP *command-line parameters* convention.
 //!
 //! ### The protocol
 //!
@@ -259,6 +260,106 @@ pub enum Protocol {
     /// Protocol type for communication between two [`Link`] end points reachable
     /// across a network connection.
     TCPIP,
+}
+
+//======================================
+// Urgent message types
+//======================================
+
+/// A WSTP out-of-band urgent message.
+///
+/// See also:
+///
+/// * [`Link::is_message_ready()`]
+/// * [`Link::put_message()`]
+/// * [`Link::get_message()`]
+#[derive(Debug, Clone, PartialEq)]
+pub struct UrgentMessage {
+    /// The urgent message code.
+    pub code: u32,
+
+    /// The urgent message parameter value.
+    ///
+    /// This defaults to 0 if no other value was specified by the message sender.
+    pub param: u32,
+}
+
+/// A reserved WSTP urgent message code value.
+///
+/// See the details section of
+/// [`WSGetMessage()`](https://reference.wolfram.com/language/ref/c/WSGetMessage)
+/// for more information on WSTP urgent message types.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub enum UrgentMessageKind {
+    /// [`sys::WSTerminateMessage`]
+    Terminate,
+    /// [`sys::WSInterruptMessage`]
+    Interrupt,
+    /// [`sys::WSAbortMessage`]
+    Abort,
+}
+
+impl UrgentMessage {
+    /// [`sys::WSTerminateMessage`]
+    pub const TERMINATE: UrgentMessage = UrgentMessage {
+        code: sys::WSTerminateMessage,
+        param: 0,
+    };
+
+    /// [`sys::WSInterruptMessage`]
+    pub const INTERRUPT: UrgentMessage = UrgentMessage {
+        code: sys::WSInterruptMessage,
+        param: 0,
+    };
+
+    /// [`sys::WSAbortMessage`]
+    pub const ABORT: UrgentMessage = UrgentMessage {
+        code: sys::WSAbortMessage,
+        param: 0,
+    };
+
+    /// Construct a new `UrgentMessage` with the specified code.
+    ///
+    /// The default `param` value is 0.
+    pub fn new(code: u32) -> Self {
+        UrgentMessage { code, param: 0 }
+    }
+
+    /// Construct a new `UrgentMessage` with the specified code and paramater
+    /// value.
+    pub fn new_with_param(code: u32, param: u32) -> Self {
+        UrgentMessage { code, param }
+    }
+
+    /// Check if this urgent message is one of the reserved message codes.
+    ///
+    /// If this message code is one of the known reserved WSTP message codes,
+    /// `Ok(UrgentMessageKind)` will be returned. Otherwise `Err(code)` will
+    /// be returned.
+    pub fn kind(&self) -> Result<UrgentMessageKind, u32> {
+        let UrgentMessage { code, param: _ } = *self;
+
+        let kind = match code {
+            sys::WSTerminateMessage => UrgentMessageKind::Terminate,
+            sys::WSInterruptMessage => UrgentMessageKind::Interrupt,
+            sys::WSAbortMessage => UrgentMessageKind::Abort,
+            other => return Err(other),
+        };
+
+        Ok(kind)
+    }
+}
+
+impl UrgentMessageKind {
+    /// Returns the raw message code of this message kind.
+    pub fn code(&self) -> u32 {
+        match self {
+            UrgentMessageKind::Terminate => sys::WSTerminateMessage,
+            UrgentMessageKind::Interrupt => sys::WSInterruptMessage,
+            UrgentMessageKind::Abort => sys::WSAbortMessage,
+        }
+    }
 }
 
 //======================================
@@ -630,6 +731,73 @@ impl Link {
         let Link { raw_link } = *self;
 
         sys::WSSetUserData(raw_link, data_obj, user_func);
+    }
+}
+
+/// # Urgent messages
+impl Link {
+    /// Returns `true` if there is an out-of-band urgent message available to read.
+    ///
+    /// *WSTP C API Documentation:* [`WSMessageReady()`](https://reference.wolfram.com/language/ref/c/WSMessageReady.html)
+    pub fn is_message_ready(&self) -> bool {
+        let Link { raw_link } = *self;
+
+        unsafe { sys::WSMessageReady(raw_link) != 0 }
+    }
+
+    /// Send an out-of-band message.
+    ///
+    /// *WSTP C API Documentation:* [`WSPutMessage()`](https://reference.wolfram.com/language/ref/c/WSPutMessage.html)
+    ///
+    /// ```
+    /// use wstp::{Protocol, UrgentMessage};
+    ///
+    /// let (mut a, mut b) = wstp::channel(Protocol::SharedMemory).unwrap();
+    ///
+    /// a.put_message(UrgentMessage::ABORT).unwrap();
+    ///
+    /// assert_eq!(b.get_message(), Some(UrgentMessage::ABORT));
+    /// ```
+    pub fn put_message(&mut self, message: UrgentMessage) -> Result<(), Error> {
+        let Link { raw_link } = *self;
+
+        let UrgentMessage { code, param } = message;
+
+        let code = i32::try_from(code).expect("WSTP urgent message code overflows i32");
+
+        let param =
+            i32::try_from(param).expect("WSTP urgent message param overflows i32");
+
+        let result = unsafe { sys::WSPutMessageWithArg(raw_link, code, param) };
+
+        if result == 0 {
+            return Err(self.error_or_unknown());
+        }
+
+        Ok(())
+    }
+
+    /// This function does not block if no urgent message is available.
+    ///
+    /// *WSTP C API Documentation:* [`WSGetMessage()`](https://reference.wolfram.com/language/ref/c/WSGetMessage.html)
+    pub fn get_message(&mut self) -> Option<UrgentMessage> {
+        let Link { raw_link } = *self;
+
+        let mut code: i32 = 0;
+        let mut param: i32 = 0;
+
+        let result = unsafe { sys::WSGetMessage(raw_link, &mut code, &mut param) };
+
+        let code =
+            u32::try_from(code).expect("WSTP urgent message code doesn't fit into u32");
+        let param =
+            u32::try_from(param).expect("WSTP urgent message param doesn't fit into u32");
+
+        if result != 0 {
+            Some(UrgentMessage { code, param })
+        } else {
+            None
+        }
     }
 }
 
