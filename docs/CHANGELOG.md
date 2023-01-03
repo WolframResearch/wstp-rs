@@ -9,6 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [0.2.5] — 2023-01-03
+
+### Added
+
+* Add new
+  [`wstp::channel()`](https://docs.rs/wstp/0.2.5/wstp/fn.channel.html)
+  function, for conveniently creating two connected `Link`s. ([#42])
+
+* Added support for WSTP out-of-band urgent messages. ([#43])
+
+  Add new
+  [`UrgentMessage`](https://docs.rs/wstp/0.2.5/wstp/struct.UrgentMessage.html)
+  and
+  [`UrgentMessageKind`](https://docs.rs/wstp/0.2.5/wstp/enum.UrgentMessageKind.html)
+  types.
+
+  Add new `Link` methods:
+
+  - [`Link::is_message_ready()`](https://docs.rs/wstp/0.2.5/wstp/struct.Link.html#method.is_message_ready)
+  - [`Link::put_message()`](https://docs.rs/wstp/0.2.5/wstp/struct.Link.html#method.put_message)
+  - [`Link::get_message()`](https://docs.rs/wstp/0.2.5/wstp/struct.Link.html#method.get_message)
+
+### Fixed
+
+* Fix issues with `WolframKernelProcess::launch()` ([#42])
+
+  - Fix use of hard-coded linkname. Now a unique linkname is generated automatically.
+
+  - Remove unnecessary background thread, fixing race condition between
+    `Link::listen()` in the background thread and the link connection in the
+    spawned [`WolframKernel`](https://reference.wolfram.com/language/ref/program/WolframKernel)
+    process.
+
+* Fix examples in README.md and the crate root doc comment that exhibit the
+  same mistake as `WolframKernelProcess::launch()` bugs mentioned above. ([#42])
+
+### Changed
+
+* Remove redundant attrs on `Link::unchecked_ref_cast_mut()` ([#41])
+
+  *Contributed by dtolnay.*
+
 
 
 ## [0.2.4] – 2022-10-19
@@ -206,10 +248,16 @@ Initial release of the [`wstp`](https://crates.io/crates/wstp) crate.
 <!-- v0.2.4 -->
 [#39]: https://github.com/WolframResearch/wstp-rs/pull/39
 
+<!-- v0.2.5 -->
+[#41]: https://github.com/WolframResearch/wstp-rs/pull/41
+[#42]: https://github.com/WolframResearch/wstp-rs/pull/42
+[#43]: https://github.com/WolframResearch/wstp-rs/pull/43
+
 
 <!-- This needs to be updated for each tagged release. -->
-[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.5...HEAD
 
+[0.2.5]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.1...v0.2.2
