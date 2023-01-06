@@ -160,7 +160,7 @@ mod test_readme {
 
 
 use std::convert::TryFrom;
-use std::ffi::{CStr, CString};
+use std::ffi::{c_char, CStr, CString};
 use std::fmt::{self, Display};
 use std::net;
 
@@ -516,7 +516,7 @@ impl Link {
     pub fn open_with_args(args: &[&str]) -> Result<Self, Error> {
         // NOTE: Before returning, we must convert these back into CString's to
         //       deallocate them.
-        let mut c_strings: Vec<*mut i8> = args
+        let mut c_strings: Vec<*mut c_char> = args
             .into_iter()
             .map(|&str| {
                 CString::new(str)
@@ -623,7 +623,7 @@ impl Link {
         let Link { raw_link } = *self;
 
         unsafe {
-            let name: *const i8 = self::sys::WSName(raw_link as *mut _);
+            let name: *const c_char = self::sys::WSName(raw_link as *mut _);
             CStr::from_ptr(name).to_str().unwrap().to_owned()
         }
     }
@@ -652,7 +652,7 @@ impl Link {
     pub fn error(&self) -> Option<Error> {
         let Link { raw_link } = *self;
 
-        let (code, message): (i32, *const i8) =
+        let (code, message): (i32, *const c_char) =
             unsafe { (sys::WSError(raw_link), WSErrorMessage(raw_link)) };
 
         if code == sys::MLEOK || message.is_null() {
