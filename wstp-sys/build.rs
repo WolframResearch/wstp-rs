@@ -254,6 +254,14 @@ fn link_to_wstp(app: Option<&WolframApp>) {
         println!("cargo:rustc-link-lib=dylib=wsock32");
         println!("cargo:rustc-link-lib=dylib=rpcrt4");
     }
+
+    //
+    // Linux
+    //
+
+    if cfg!(target_os = "linux") {
+        println!("cargo:rustc-link-lib=uuid")
+    }
 }
 
 fn link_wstp_statically(lib: &PathBuf) {
