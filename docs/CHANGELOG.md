@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-This releases fixes several causes of build failures on Linux.
+This release fixes several causes of build failures on Linux.
 
 * Fix use of `i8` instead of `c_char` in variables bound to return values of
   `CStr::from_raw()` and `CString::into_raw()`. ([#45])
