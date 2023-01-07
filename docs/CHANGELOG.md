@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.6] — 2023-01-06
+
+### Fixed
+
+This releases fixes several causes of build failures on Linux.
+
+* Fix use of `i8` instead of `c_char` in variables bound to return values of
+  `CStr::from_raw()` and `CString::into_raw()`. ([#45])
+
+  `c_char` is an alias for `i8` on macOS, but it is an alias for `u8` on Linux.
+
+* Fix linker errors by setting missing `-luuid` linker flag in `build.rs`
+  on Linux. ([#46])
+
+  `libwstp` depends on the Linux `libuuid` library when targeting Linux.
+
+  *On Ubuntu, `libuuid` is provided by the
+  [`uuid-dev` package](https://packages.ubuntu.com/bionic/uuid-dev).*
+
+* Fix broken automatic discovery of `wstp.h` and `libwstp` on Linux by updating
+  `wolfram-app-discovery` dependency version. ([#47])
+
 
 
 ## [0.2.5] — 2023-01-03
@@ -253,10 +275,16 @@ Initial release of the [`wstp`](https://crates.io/crates/wstp) crate.
 [#42]: https://github.com/WolframResearch/wstp-rs/pull/42
 [#43]: https://github.com/WolframResearch/wstp-rs/pull/43
 
+<!-- v0.2.5 -->
+[#45]: https://github.com/WolframResearch/wstp-rs/pull/45
+[#46]: https://github.com/WolframResearch/wstp-rs/pull/46
+[#47]: https://github.com/WolframResearch/wstp-rs/pull/47
+
 
 <!-- This needs to be updated for each tagged release. -->
-[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.5...HEAD
+[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.6...HEAD
 
+[0.2.6]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.2...v0.2.3
