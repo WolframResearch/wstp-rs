@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+
+## [0.2.7] — 2023-02-03
+
+### Added
+
+* Add logging support to `wstp-sys/build.rs`. ([#49])
+
+  [wolfram-app-discovery v0.4.3](https://github.com/WolframResearch/wolfram-app-discovery-rs/blob/master/docs/CHANGELOG.md#043--2023-02-03)
+  added support for logging via the Rust [`log`](https://crates.io/crates/log)
+  logging facade library. `wstp-sys/build.rs` uses wolfram-app-discovery to find
+  a copy of the WSTP SDK.
+
+  Logging messages from `wstp-sys/build.rs` can now be enabled by setting the
+  `RUST_LOG` environment to an appropriate value, as documented in the
+  [`env_logger`](https://docs.rs/env_logger) crate documentation. This can help
+  debug discovery errors that occur during a build.
+
+### Changed
+
+* Increase `wolfram-expr` dependency version to v0.1.4. ([#49])
+
+
+
 ## [0.2.6] — 2023-01-06
 
 ### Fixed
@@ -242,6 +266,7 @@ Initial release of the [`wstp`](https://crates.io/crates/wstp) crate.
 
 
 
+[wolfram-app-discovery]: https://crates.io/crates/wolfram-app-discovery
 
 
 [#16]: https://github.com/WolframResearch/wstp-rs/pull/16
@@ -275,15 +300,19 @@ Initial release of the [`wstp`](https://crates.io/crates/wstp) crate.
 [#42]: https://github.com/WolframResearch/wstp-rs/pull/42
 [#43]: https://github.com/WolframResearch/wstp-rs/pull/43
 
-<!-- v0.2.5 -->
+<!-- v0.2.6 -->
 [#45]: https://github.com/WolframResearch/wstp-rs/pull/45
 [#46]: https://github.com/WolframResearch/wstp-rs/pull/46
 [#47]: https://github.com/WolframResearch/wstp-rs/pull/47
 
+<!-- v0.2.7 -->
+[#49]: https://github.com/WolframResearch/wstp-rs/pull/49
+
 
 <!-- This needs to be updated for each tagged release. -->
-[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.6...HEAD
+[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.7...HEAD
 
+[0.2.7]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.7...v0.2.7
 [0.2.6]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.3...v0.2.4
