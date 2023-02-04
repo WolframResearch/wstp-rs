@@ -1,6 +1,6 @@
 [package]
 name = "wstp-sys"
-version = "0.2.6"
+version = "0.2.7"
 authors = ["Connor Gray <code@connorgray.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2018"
@@ -18,6 +18,6 @@ links = "WSTPi4"
 link-cplusplus = "1.0.6"
 
 [build-dependencies]
-wolfram-app-discovery = "0.4.1"
+wolfram-app-discovery = "0.4.3"
 bindgen = "0.59.2"
 env_logger = { version = "0.10.0", default-features = false }
