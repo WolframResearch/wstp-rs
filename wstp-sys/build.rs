@@ -79,14 +79,20 @@ fn main() {
     //       NOTE: Pre-generated bindings have the advantage of working when
     //             libclang is not available (which bindgen requires), which
     //             happens e.g. in Windows CI/CD builds.
-    let bindings_path = match use_generated_bindings(app.as_ref()) {
-        Ok(path) => path,
-        Err(err) => {
+    let bindings_path = match std::panic::catch_unwind(|| use_generated_bindings(app.as_ref())) {
+        Ok(Ok(path)) => path,
+        Ok(Err(err)) => {
             println!("cargo:warning=ERROR generating bindings: {err}");
             println!("cargo:warning=info: Error generating bindings; falling back to using pre-generated bindings.");
 
             use_pregenerated_bindings(FALLBACK_VERSION)
         },
+        Err(panic_payload) => {
+            println!("cargo:warning=PANIC generating bindings: {panic_payload:?}");
+            println!("cargo:warning=info: Panic generating bindings; falling back to using pre-generated bindings.");
+
+            use_pregenerated_bindings(FALLBACK_VERSION)
+        }
     };
 
     println!(
