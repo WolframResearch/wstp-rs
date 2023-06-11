@@ -74,6 +74,7 @@ fn generate_and_save_bindings_to_file(wstp_h: &PathBuf, out_path: &PathBuf) {
         // WSTP uses `int` as it's error type, so this is necessary to avoid having to
         // scatter `as i32` everywhere.
         .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
+        // .clang_args(&["-target", "x86_64-apple-darwin"])
         .generate()
         .expect("unable to generate Rust bindings to WSTP using bindgen");
 

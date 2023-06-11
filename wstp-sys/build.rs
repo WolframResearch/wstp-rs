@@ -17,6 +17,9 @@ fn main() {
     // cause cargo to rebuild the current crate.
     wolfram_app_discovery::config::set_print_cargo_build_script_directives(true);
 
+    #[allow(non_snake_case)]
+    let FALLBACK_VERSION: WolframVersion = WolframVersion::new(13, 0, 1);
+
     // This crate is being built by docs.rs. Skip trying to locate a WolframApp.
     // See: https://docs.rs/about/builds#detecting-docsrs
     if std::env::var("DOCS_RS").is_ok() {
@@ -50,8 +53,7 @@ fn main() {
         );
     }
 
-
-    let app = WolframApp::try_default().ok();
+    let app: Option<WolframApp> = WolframApp::try_default().ok();
 
     //-------------
     // Link to WSTP
@@ -62,10 +64,8 @@ fn main() {
     //----------------------------------------------------
     // Generate or use pre-generated Rust bindings to WSTP
     //----------------------------------------------------
-    // See docs/Development.md for instructions on how to pre-generate
+    // See docs/Maintenance.md for instructions on how to pre-generate
     // bindings for new WL versions.
-
-    let bindings_path = use_generated_bindings(app.as_ref());
 
     // TODO: Make use of pre-generated bindings useable via a feature flag?
     //       Using pre-generated bindings seems to currently only have a distinct
@@ -75,11 +75,19 @@ fn main() {
     //       In other situations, using pre-generated bindings doesn't offer the
     //       advantage of not needing the WSTP SDK available locally, because you
     //       still need to link against the WSTP static library.
+    //
+    //       NOTE: Pre-generated bindings have the advantage of working when
+    //             libclang is not available (which bindgen requires), which
+    //             happens e.g. in Windows CI/CD builds.
+    let bindings_path = match use_generated_bindings(app.as_ref()) {
+        Ok(path) => path,
+        Err(err) => {
+            println!("cargo:warning=ERROR generating bindings: {err}");
+            println!("cargo:warning=info: Error generating bindings; falling back to using pre-generated bindings.");
 
-    // let wolfram_version = app
-    //     .wolfram_version()
-    //     .expect("unable to get Wolfram Language vesion number");
-    // let bindings_path = use_pregenerated_bindings(&wolfram_version);
+            use_pregenerated_bindings(FALLBACK_VERSION)
+        },
+    };
 
     println!(
         "cargo:rustc-env=CRATE_WSTP_SYS_BINDINGS={}",
@@ -96,7 +104,7 @@ fn main() {
 //-----------------------------------
 
 /// Use bindings that we generate now at compile time.
-fn use_generated_bindings(app: Option<&WolframApp>) -> PathBuf {
+fn use_generated_bindings(app: Option<&WolframApp>) -> Result<PathBuf, String> {
     let wstp_h = wolfram_app_discovery::build_scripts::wstp_c_header_path(app)
         .expect("unable to get 'wstp.h' location")
         .into_path_buf();
@@ -109,15 +117,18 @@ fn use_generated_bindings(app: Option<&WolframApp>) -> PathBuf {
     let out_path =
         PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("WSTP_bindings.rs");
 
-    generate_and_save_bindings_to_file(&wstp_h, &out_path);
+    generate_and_save_bindings_to_file(&wstp_h, &out_path)?;
 
-    out_path
+    Ok(out_path)
 }
 
 /// Note: The definition of this function is copied from
 ///       scripts/generate-versioned-bindings.rs. Changes to this copy of the function
 ///       should also be made to the other copy.
-fn generate_and_save_bindings_to_file(wstp_h: &PathBuf, out_path: &PathBuf) {
+fn generate_and_save_bindings_to_file(
+    wstp_h: &PathBuf,
+    out_path: &PathBuf,
+) -> Result<(), String> {
     assert!(wstp_h.file_name().unwrap() == "wstp.h");
 
     let bindings = bindgen::Builder::default()
@@ -129,7 +140,12 @@ fn generate_and_save_bindings_to_file(wstp_h: &PathBuf, out_path: &PathBuf) {
         // scatter `as i32` everywhere.
         .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
         .generate()
-        .expect("unable to generate Rust bindings to WSTP using bindgen");
+        .map_err(|err| {
+            format!(
+                "unable to generate Rust bindings to WSTP using bindgen: {:?}",
+                err
+            )
+        })?;
 
     std::fs::create_dir_all(out_path.parent().unwrap())
         .expect("failed to create parent directories for generating bindings file");
@@ -137,6 +153,8 @@ fn generate_and_save_bindings_to_file(wstp_h: &PathBuf, out_path: &PathBuf) {
     bindings
         .write_to_file(&out_path)
         .expect("failed to write Rust bindings with IO error");
+
+    Ok(())
 }
 
 //-----------------------
@@ -145,7 +163,7 @@ fn generate_and_save_bindings_to_file(wstp_h: &PathBuf, out_path: &PathBuf) {
 
 /// Use bindings that have been pre-generated.
 #[allow(dead_code)]
-fn use_pregenerated_bindings(wolfram_version: &WolframVersion) -> PathBuf {
+fn use_pregenerated_bindings(wolfram_version: WolframVersion) -> PathBuf {
     let system_id =
         wolfram_app_discovery::system_id_from_target(&std::env::var("TARGET").unwrap())
             .expect("unable to get System ID for target system");
@@ -177,6 +195,11 @@ fn use_pregenerated_bindings(wolfram_version: &WolframVersion) -> PathBuf {
         );
         panic!("<See printed error>");
     }
+
+    println!(
+        "cargo:warning=info: using pre-generated bindings for ({wolfram_version}, {system_id}): {}",
+        bindings_path.display()
+    );
 
     bindings_path
 }
