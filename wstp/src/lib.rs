@@ -303,19 +303,19 @@ pub enum UrgentMessageKind {
 impl UrgentMessage {
     /// [`sys::WSTerminateMessage`]
     pub const TERMINATE: UrgentMessage = UrgentMessage {
-        code: sys::WSTerminateMessage,
+        code: sys::WSTerminateMessage as u32,
         param: 0,
     };
 
     /// [`sys::WSInterruptMessage`]
     pub const INTERRUPT: UrgentMessage = UrgentMessage {
-        code: sys::WSInterruptMessage,
+        code: sys::WSInterruptMessage as u32,
         param: 0,
     };
 
     /// [`sys::WSAbortMessage`]
     pub const ABORT: UrgentMessage = UrgentMessage {
-        code: sys::WSAbortMessage,
+        code: sys::WSAbortMessage as u32,
         param: 0,
     };
 
@@ -340,11 +340,14 @@ impl UrgentMessage {
     pub fn kind(&self) -> Result<UrgentMessageKind, u32> {
         let UrgentMessage { code, param: _ } = *self;
 
-        let kind = match code {
-            sys::WSTerminateMessage => UrgentMessageKind::Terminate,
-            sys::WSInterruptMessage => UrgentMessageKind::Interrupt,
-            sys::WSAbortMessage => UrgentMessageKind::Abort,
-            other => return Err(other),
+        let kind = if code == sys::WSTerminateMessage as u32 {
+            UrgentMessageKind::Terminate
+        } else if code == sys::WSInterruptMessage as u32 {
+            UrgentMessageKind::Interrupt
+        } else if code == sys::WSAbortMessage as u32 {
+            UrgentMessageKind::Abort
+        } else {
+            return Err(code as u32);
         };
 
         Ok(kind)
@@ -355,9 +358,9 @@ impl UrgentMessageKind {
     /// Returns the raw message code of this message kind.
     pub fn code(&self) -> u32 {
         match self {
-            UrgentMessageKind::Terminate => sys::WSTerminateMessage,
-            UrgentMessageKind::Interrupt => sys::WSInterruptMessage,
-            UrgentMessageKind::Abort => sys::WSAbortMessage,
+            UrgentMessageKind::Terminate => sys::WSTerminateMessage as u32,
+            UrgentMessageKind::Interrupt => sys::WSInterruptMessage as u32,
+            UrgentMessageKind::Abort => sys::WSAbortMessage as u32,
         }
     }
 }
