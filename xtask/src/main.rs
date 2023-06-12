@@ -3,11 +3,11 @@
 //! This crate follows the [`cargo xtask`](https://github.com/matklad/cargo-xtask)
 //! convention.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand};
 
-use wolfram_app_discovery::{SystemID, WolframApp, WolframVersion};
+use wolfram_app_discovery::{SystemID, WolframApp, WolframVersion, WstpSdk};
 
 const FILENAME: &str = "WSTP_bindings.rs";
 
@@ -41,11 +41,12 @@ fn main() {
     let wolfram_version: WolframVersion =
         app.wolfram_version().expect("unable to get WolframVersion");
 
-    // Path to the WSTP SDK 'wstp.h` header file.
-    let wstp_h = app
-        .target_wstp_sdk()
-        .expect("unable to get WSTP SDK location")
-        .wstp_c_header_path();
+    let wstp_sdks: Vec<WstpSdk> = app
+        .wstp_sdks()
+        .expect("unable to locate WSTP SDKs in app")
+        .into_iter()
+        .filter_map(|entry| entry.ok())
+        .collect();
 
     let targets: Vec<&str> = match target {
         Some(ref target) => vec![target.as_str()],
@@ -55,6 +56,21 @@ fn main() {
     println!("Generating bindings for: {targets:?}");
 
     for target in targets {
+        let target_system_id = SystemID::try_from_rust_target(target).unwrap();
+
+        // Find the WSTP SDK suitable for the specified Rust target.
+        let sdk: Option<&WstpSdk> = wstp_sdks
+            .iter()
+            .find(|sdk| sdk.system_id() == target_system_id);
+
+        let Some(sdk) = sdk else {
+            println!("WARNING: App does not provide WSTP SDK for {target_system_id} (Rust target: {target}).");
+            continue
+        };
+
+        // Path to the WSTP SDK 'wstp.h` header file.
+        let wstp_h = sdk.wstp_c_header_path();
+
         generate_bindings(&wolfram_version, &wstp_h, target);
     }
 }
@@ -91,8 +107,7 @@ fn generate_bindings(wolfram_version: &WolframVersion, wstp_h: &Path, target: &s
         .expect("unable to generate Rust bindings to WSTP using bindgen");
 
     // OUT_DIR is set by cargo before running this build.rs file.
-    let out_path = std::env::current_dir()
-        .expect("unable to get process current working directory")
+    let out_path = repo_root_dir()
         .join("wstp-sys")
         .join("generated")
         .join(&wolfram_version.to_string())
@@ -124,8 +139,14 @@ fn generate_bindings(wolfram_version: &WolframVersion, wstp_h: &Path, target: &s
         target_system_id,
         wolfram_version,
         out_path
-            .strip_prefix(std::env::current_dir().unwrap())
+            .strip_prefix(repo_root_dir())
             .unwrap()
             .display()
     )
+}
+
+fn repo_root_dir() -> PathBuf {
+    let xtask_crate = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+    assert!(xtask_crate.file_name().unwrap() == "xtask");
+    xtask_crate.parent().unwrap().to_path_buf()
 }
