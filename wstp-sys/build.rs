@@ -8,7 +8,10 @@
 use std::path::PathBuf;
 use std::process;
 
-use wolfram_app_discovery::{WolframApp, WolframVersion};
+use wolfram_app_discovery::{SystemID, WolframApp, WolframVersion};
+
+/// Oldest Wolfram Version that wstp-rs aims to be compatible with.
+const WOLFRAM_VERSION: WolframVersion = WolframVersion::new(13, 0, 1);
 
 fn main() {
     env_logger::init();
@@ -17,14 +20,11 @@ fn main() {
     // cause cargo to rebuild the current crate.
     wolfram_app_discovery::config::set_print_cargo_build_script_directives(true);
 
-    #[allow(non_snake_case)]
-    let FALLBACK_VERSION: WolframVersion = WolframVersion::new(13, 0, 1);
-
     // This crate is being built by docs.rs. Skip trying to locate a WolframApp.
     // See: https://docs.rs/about/builds#detecting-docsrs
     if std::env::var("DOCS_RS").is_ok() {
         // Force docs.rs to use the bindings generated for this version / system.
-        let bindings_path = make_bindings_path("13.0.0", "MacOSX-x86-64");
+        let bindings_path = make_bindings_path(&WOLFRAM_VERSION, SystemID::MacOSX_x86_64);
 
         // This environment variable is included using `env!()`. wstp-sys will fail to
         // build if it is not set correctly.
@@ -79,21 +79,7 @@ fn main() {
     //       NOTE: Pre-generated bindings have the advantage of working when
     //             libclang is not available (which bindgen requires), which
     //             happens e.g. in Windows CI/CD builds.
-    let bindings_path = match std::panic::catch_unwind(|| use_generated_bindings(app.as_ref())) {
-        Ok(Ok(path)) => path,
-        Ok(Err(err)) => {
-            println!("cargo:warning=ERROR generating bindings: {err}");
-            println!("cargo:warning=info: Error generating bindings; falling back to using pre-generated bindings.");
-
-            use_pregenerated_bindings(FALLBACK_VERSION)
-        },
-        Err(panic_payload) => {
-            println!("cargo:warning=PANIC generating bindings: {panic_payload:?}");
-            println!("cargo:warning=info: Panic generating bindings; falling back to using pre-generated bindings.");
-
-            use_pregenerated_bindings(FALLBACK_VERSION)
-        }
-    };
+    let bindings_path = use_pregenerated_bindings(WOLFRAM_VERSION);
 
     println!(
         "cargo:rustc-env=CRATE_WSTP_SYS_BINDINGS={}",
@@ -105,64 +91,6 @@ fn main() {
 // Tell `lib.rs` where to find the file containing the WSTP Rust bindings.
 //========================================================================
 
-//-----------------------------------
-// Bindings generated at compile time
-//-----------------------------------
-
-/// Use bindings that we generate now at compile time.
-fn use_generated_bindings(app: Option<&WolframApp>) -> Result<PathBuf, String> {
-    let wstp_h = wolfram_app_discovery::build_scripts::wstp_c_header_path(app)
-        .expect("unable to get 'wstp.h' location")
-        .into_path_buf();
-
-    println!(
-        "cargo:warning=info: generating WSTP bindings from: {}",
-        wstp_h.display()
-    );
-
-    let out_path =
-        PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("WSTP_bindings.rs");
-
-    generate_and_save_bindings_to_file(&wstp_h, &out_path)?;
-
-    Ok(out_path)
-}
-
-/// Note: The definition of this function is copied from
-///       scripts/generate-versioned-bindings.rs. Changes to this copy of the function
-///       should also be made to the other copy.
-fn generate_and_save_bindings_to_file(
-    wstp_h: &PathBuf,
-    out_path: &PathBuf,
-) -> Result<(), String> {
-    assert!(wstp_h.file_name().unwrap() == "wstp.h");
-
-    let bindings = bindgen::Builder::default()
-        .header(wstp_h.display().to_string())
-        .generate_comments(true)
-        .rustfmt_bindings(true)
-        // Force the WSE* error macro definitions to be interpreted as signed constants.
-        // WSTP uses `int` as it's error type, so this is necessary to avoid having to
-        // scatter `as i32` everywhere.
-        .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
-        .generate()
-        .map_err(|err| {
-            format!(
-                "unable to generate Rust bindings to WSTP using bindgen: {:?}",
-                err
-            )
-        })?;
-
-    std::fs::create_dir_all(out_path.parent().unwrap())
-        .expect("failed to create parent directories for generating bindings file");
-
-    bindings
-        .write_to_file(&out_path)
-        .expect("failed to write Rust bindings with IO error");
-
-    Ok(())
-}
-
 //-----------------------
 // Pre-generated bindings
 //-----------------------
@@ -170,14 +98,14 @@ fn generate_and_save_bindings_to_file(
 /// Use bindings that have been pre-generated.
 #[allow(dead_code)]
 fn use_pregenerated_bindings(wolfram_version: WolframVersion) -> PathBuf {
-    let system_id =
-        wolfram_app_discovery::system_id_from_target(&std::env::var("TARGET").unwrap())
+    let system_id: SystemID =
+        SystemID::try_from_rust_target(&std::env::var("TARGET").unwrap())
             .expect("unable to get System ID for target system");
 
     // FIXME: Check that this file actually exists, and generate a nicer error if it
     //        doesn't.
 
-    let bindings_path = make_bindings_path(&wolfram_version.to_string(), &system_id);
+    let bindings_path = make_bindings_path(&wolfram_version, system_id);
 
     println!("cargo:rerun-if-changed={}", bindings_path.display());
 
@@ -210,10 +138,10 @@ fn use_pregenerated_bindings(wolfram_version: WolframVersion) -> PathBuf {
     bindings_path
 }
 
-fn make_bindings_path(wolfram_version: &str, system_id: &str) -> PathBuf {
+fn make_bindings_path(wolfram_version: &WolframVersion, system_id: SystemID) -> PathBuf {
     let bindings_path = PathBuf::from("generated")
-        .join(wolfram_version)
-        .join(system_id)
+        .join(&wolfram_version.to_string())
+        .join(system_id.as_str())
         .join("WSTP_bindings.rs");
 
     let absolute_bindings_path =
