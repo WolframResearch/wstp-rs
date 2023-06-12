@@ -55,6 +55,10 @@ fn main() {
 
     let app: Option<WolframApp> = WolframApp::try_default().ok();
 
+    let target_system_id: SystemID =
+        SystemID::try_from_rust_target(&std::env::var("TARGET").unwrap())
+            .expect("unable to get System ID for target system");
+
     //-------------
     // Link to WSTP
     //-------------
@@ -79,7 +83,7 @@ fn main() {
     //       NOTE: Pre-generated bindings have the advantage of working when
     //             libclang is not available (which bindgen requires), which
     //             happens e.g. in Windows CI/CD builds.
-    let bindings_path = use_pregenerated_bindings(WOLFRAM_VERSION);
+    let bindings_path = use_pregenerated_bindings(WOLFRAM_VERSION, target_system_id);
 
     println!(
         "cargo:rustc-env=CRATE_WSTP_SYS_BINDINGS={}",
@@ -97,15 +101,10 @@ fn main() {
 
 /// Use bindings that have been pre-generated.
 #[allow(dead_code)]
-fn use_pregenerated_bindings(wolfram_version: WolframVersion) -> PathBuf {
-    let system_id: SystemID =
-        SystemID::try_from_rust_target(&std::env::var("TARGET").unwrap())
-            .expect("unable to get System ID for target system");
-
+fn use_pregenerated_bindings(wolfram_version: WolframVersion, target_system_id: SystemID) -> PathBuf {
     // FIXME: Check that this file actually exists, and generate a nicer error if it
     //        doesn't.
-
-    let bindings_path = make_bindings_path(&wolfram_version, system_id);
+    let bindings_path = make_bindings_path(&wolfram_version, target_system_id);
 
     println!("cargo:rerun-if-changed={}", bindings_path.display());
 
@@ -125,13 +124,13 @@ fn use_pregenerated_bindings(wolfram_version: WolframVersion) -> PathBuf {
 
     =========================================
             ",
-            wolfram_version, system_id
+            wolfram_version, target_system_id
         );
         panic!("<See printed error>");
     }
 
     println!(
-        "cargo:warning=info: using pre-generated bindings for ({wolfram_version}, {system_id}): {}",
+        "cargo:warning=info: using pre-generated bindings for WSTP ({wolfram_version}, {target_system_id}): {}",
         bindings_path.display()
     );
 
