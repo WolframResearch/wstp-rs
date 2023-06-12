@@ -1,30 +1,40 @@
-//! ```cargo
-//! [package]
-//! edition = "2021"
+//! `cargo xtask` helper commands for the wstp-rs project.
 //!
-//! [dependencies]
-//! clap = { version = "4.3.3", features = ["derive"] }
-//! bindgen = "^0.65.1"
-//! wolfram-app-discovery = "0.4.7"
-//! ```
+//! This crate follows the [`cargo xtask`](https://github.com/matklad/cargo-xtask)
+//! convention.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 
-use wolfram_app_discovery::{WolframApp, WolframVersion, SystemID};
+use wolfram_app_discovery::{SystemID, WolframApp, WolframVersion};
 
 const FILENAME: &str = "WSTP_bindings.rs";
 
 #[derive(Parser)]
 struct Cli {
-    /// Target to generate bindings for.
-    #[arg(long)]
-    target: Option<String>,
+    #[command(subcommand)]
+    command: Commands,
 }
 
+#[derive(Subcommand)]
+enum Commands {
+    /// Generate and save WSTP bindings for the current platform.
+    GenBindings {
+        /// Target to generate bindings for.
+        #[arg(long)]
+        target: Option<String>,
+    },
+}
+
+//======================================
+// Main
+//======================================
+
 fn main() {
-    let Cli { target } = Cli::parse();
+    let Cli {
+        command: Commands::GenBindings { target },
+    } = Cli::parse();
 
     let app = WolframApp::try_default().expect("unable to locate WolframApp");
 
@@ -81,7 +91,9 @@ fn generate_bindings(wolfram_version: &WolframVersion, wstp_h: &Path, target: &s
         .expect("unable to generate Rust bindings to WSTP using bindgen");
 
     // OUT_DIR is set by cargo before running this build.rs file.
-    let out_path = out_dir()
+    let out_path = std::env::current_dir()
+        .expect("unable to get process current working directory")
+        .join("wstp-sys")
         .join("generated")
         .join(&wolfram_version.to_string())
         .join(target_system_id.as_str())
@@ -104,18 +116,16 @@ fn generate_bindings(wolfram_version: &WolframVersion, wstp_h: &Path, target: &s
 
         $VersionNumber / $ReleaseNumber:  {}
 
-        Output:                           <out_dir>/{}
+        Output:                           {}
 
         ============================
         ",
         wstp_h.display(),
         target_system_id,
         wolfram_version,
-        out_path.strip_prefix(out_dir()).unwrap().display()
+        out_path
+            .strip_prefix(std::env::current_dir().unwrap())
+            .unwrap()
+            .display()
     )
-}
-
-fn out_dir() -> PathBuf {
-    // TODO: Provide a way to override this location using an environment variable.
-    std::env::current_dir().expect("unable to get process current working directory")
 }

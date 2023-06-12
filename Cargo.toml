@@ -1,5 +1,7 @@
 [workspace]
 members = [
     "wstp",
-    "wstp-sys"
+    "wstp-sys",
+    # xtask convention. See: https://github.com/matklad/cargo-xtask
+    "xtask"
 ]
