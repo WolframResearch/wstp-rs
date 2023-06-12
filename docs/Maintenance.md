@@ -16,8 +16,7 @@ this crate targets:
 
 ```shell
 $ export WOLFRAM_APP_DIRECTORY=/Applications/Wolfram/Mathematica-12.3.0.app
-$ cd wstp-sys
-$ cargo make gen-bindings
+$ cargo +nightly xtask gen-bindings
 ```
 
 using an appropriate path to the Wolfram product providing the new Wolfram Language
