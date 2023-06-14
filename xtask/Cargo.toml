@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.3.3", features = ["derive"] }
 bindgen = "^0.65.1"
-wolfram-app-discovery = "0.4.7"
+wolfram-app-discovery = "0.4.8"

@@ -22,6 +22,12 @@ $ cargo +nightly xtask gen-bindings
 using an appropriate path to the Wolfram product providing the new Wolfram Language
 version.
 
+### Generating bindings from a particular SDK
+
+```shell
+$ cargo +nightly xtask gen-bindings-from ~/Downloads/Linux-ARM64 --target aarch64-unknown-linux-gnu --wolfram-version=13.2.0
+```
+
 ## Updating build.rs bindings to use on docs.rs
 
 When `wstp-sys` is built in the <docs.rs> environment, some special logic is required

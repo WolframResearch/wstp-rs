@@ -19,11 +19,22 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Generate and save WSTP bindings for the current platform.
+    /// Generate and save WSTP bindings automatically for the current platform.
     GenBindings {
         /// Target to generate bindings for.
         #[arg(long)]
         target: Option<String>,
+    },
+    /// Generate and save WSTP bindings from the specified WSTP SDK.
+    GenBindingsFrom {
+        sdk_path: PathBuf,
+
+        /// Target to generate bindings for.
+        #[arg(long)]
+        target: String,
+
+        #[arg(long, value_delimiter = '.')]
+        wolfram_version: Vec<u32>,
     },
 }
 
@@ -32,9 +43,38 @@ enum Commands {
 //======================================
 
 fn main() {
-    let Cli {
-        command: Commands::GenBindings { target },
-    } = Cli::parse();
+    let Cli { command } = Cli::parse();
+
+    let target = match command {
+        Commands::GenBindings { target } => target,
+        Commands::GenBindingsFrom {
+            sdk_path,
+            target,
+            wolfram_version,
+        } => {
+            let wolfram_version = {
+                let [major, minor, patch]: [u32; 3] =
+                    wolfram_version.try_into().expect("--wolfram-version requires 3 components. E.g. --wolfram-version=13.0.1");
+                WolframVersion::new(major, minor, patch)
+            };
+
+            let sdk = WstpSdk::try_from_directory(sdk_path.clone())
+                .map_err(|err| {
+                    format!(
+                        "unrecognized WSTP SDK at path '{}': {err}",
+                        sdk_path.display()
+                    )
+                })
+                .unwrap();
+
+            // Path to the WSTP SDK 'wstp.h` header file.
+            let wstp_h = sdk.wstp_c_header_path();
+
+            generate_bindings(&wolfram_version, &wstp_h, &target);
+
+            return;
+        },
+    };
 
     let app = WolframApp::try_default().expect("unable to locate WolframApp");
 
@@ -138,10 +178,7 @@ fn generate_bindings(wolfram_version: &WolframVersion, wstp_h: &Path, target: &s
         wstp_h.display(),
         target_system_id,
         wolfram_version,
-        out_path
-            .strip_prefix(repo_root_dir())
-            .unwrap()
-            .display()
+        out_path.strip_prefix(repo_root_dir()).unwrap().display()
     )
 }
 

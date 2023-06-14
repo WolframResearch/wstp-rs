@@ -71,6 +71,16 @@ fn main() {
     // See docs/Maintenance.md for instructions on how to pre-generate
     // bindings for new WL versions.
 
+    // TODO: Update to a higher minimum WSTP version and remove this workaround.
+    // NOTE: WSTP didn't support 64-bit ARM Linux in v13.0.1, so pre-generated
+    //       bindings aren't available. If starting Linux-ARM64, use bindings
+    //       from a newer version. (This mismatch is neglible since there were
+    //       no significant API changes to WSTP between these two versions anyway.)
+    let wolfram_version = match target_system_id {
+        SystemID::Linux_ARM64 => WolframVersion::new(13, 2, 0),
+        _ => WOLFRAM_VERSION
+    };
+
     // TODO: Make use of pre-generated bindings useable via a feature flag?
     //       Using pre-generated bindings seems to currently only have a distinct
     //       advantage over compile-time-generated bindings when building on
@@ -83,7 +93,7 @@ fn main() {
     //       NOTE: Pre-generated bindings have the advantage of working when
     //             libclang is not available (which bindgen requires), which
     //             happens e.g. in Windows CI/CD builds.
-    let bindings_path = use_pregenerated_bindings(WOLFRAM_VERSION, target_system_id);
+    let bindings_path = use_pregenerated_bindings(wolfram_version, target_system_id);
 
     println!(
         "cargo:rustc-env=CRATE_WSTP_SYS_BINDINGS={}",
