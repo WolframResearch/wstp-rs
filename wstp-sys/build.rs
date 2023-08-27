@@ -78,7 +78,7 @@ fn main() {
     //       no significant API changes to WSTP between these two versions anyway.)
     let wolfram_version = match target_system_id {
         SystemID::Linux_ARM64 => WolframVersion::new(13, 2, 0),
-        _ => WOLFRAM_VERSION
+        _ => WOLFRAM_VERSION,
     };
 
     // TODO: Make use of pre-generated bindings useable via a feature flag?
@@ -111,7 +111,10 @@ fn main() {
 
 /// Use bindings that have been pre-generated.
 #[allow(dead_code)]
-fn use_pregenerated_bindings(wolfram_version: WolframVersion, target_system_id: SystemID) -> PathBuf {
+fn use_pregenerated_bindings(
+    wolfram_version: WolframVersion,
+    target_system_id: SystemID,
+) -> PathBuf {
     // FIXME: Check that this file actually exists, and generate a nicer error if it
     //        doesn't.
     let bindings_path = make_bindings_path(&wolfram_version, target_system_id);
@@ -171,6 +174,11 @@ fn link_to_wstp(app: Option<&WolframApp>) {
     let static_lib = wolfram_app_discovery::build_scripts::wstp_static_library_path(app)
         .expect("unable to get WSTP static library path")
         .into_path_buf();
+
+    println!(
+        "cargo:warning=info: linking to WSTP static lib from: {}",
+        static_lib.display()
+    );
 
     link_wstp_statically(&static_lib);
 
