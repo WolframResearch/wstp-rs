@@ -19,5 +19,4 @@ link-cplusplus = "1.0.6"
 
 [build-dependencies]
 wolfram-app-discovery = "0.4.7"
-bindgen = "0.59.2"
 env_logger = { version = "0.10.0", default-features = false }
