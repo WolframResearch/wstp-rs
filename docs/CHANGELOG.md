@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [0.2.8] — 2023-08-28
+
+### Changed
+
+* Change to always use pre-generated WSTP bindings. ([#54])
+
+  Previously, wstp-sys would use bindgen at build time to generate bindings to
+  the WSTP library. However, this was somewhat fragile. For example, if libclang
+  is not available on the build machine, building would fail even if WSTP was
+  otherwise available to be linked to.
+
+  Given that the wstp crate only exposes functionality from a minimum-targed
+  WSTP version anyway, using pre-generated bindings for that specific version
+  removes the need for bindgen at compile time (significantly reducing the
+  dependency tree and compile times) while preserving the same functionality.
+
+  [docs/Maintenance.md](./Maintenance.md) was updated with instructions on how
+  the maintainer can manually generate bindings when wstp / wstp-sys need to be
+  updated to support features available in newer WSTP releases.
+
+* Remove unused build dependency on `bindgen` ([#56])
+
+### Fixed
+
+* Fix issue with mismatched types causing build failures on Windows. ([#55])
+
+  This fixes [issue #51](https://github.com/WolframResearch/wstp-rs/issues/51).
+
+
+
 ## [0.2.7] — 2023-02-03
 
 ### Added
@@ -308,10 +338,16 @@ Initial release of the [`wstp`](https://crates.io/crates/wstp) crate.
 <!-- v0.2.7 -->
 [#49]: https://github.com/WolframResearch/wstp-rs/pull/49
 
+<!-- v0.2.8 -->
+[#54]: https://github.com/WolframResearch/wstp-rs/pull/54
+[#55]: https://github.com/WolframResearch/wstp-rs/pull/55
+[#56]: https://github.com/WolframResearch/wstp-rs/pull/56
+
 
 <!-- This needs to be updated for each tagged release. -->
-[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.7...HEAD
+[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.8...HEAD
 
+[0.2.8]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.7...v0.2.7
 [0.2.6]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.4...v0.2.5
