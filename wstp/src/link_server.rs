@@ -188,6 +188,10 @@ impl LinkServer {
     }
 
     /// Fallible variant of [LinkServer::interface()].
+    // TODO(breaking): Make this return something other than an IpAddr, since
+    //                 WSInterfaceFromLinkServer(..) isn't actually guaranteed
+    //                 to return a IP address--it can also return a domain name
+    //                 (commonly a local domain name).
     pub fn try_interface(&self) -> Result<std::net::IpAddr, Error> {
         let mut err: c_int = sys::MLEOK;
 
