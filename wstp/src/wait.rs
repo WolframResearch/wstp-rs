@@ -3,14 +3,20 @@ use crate::{
     Error, Link,
 };
 
-use std::collections::HashMap;
-use std::sync::Mutex;
+use std::{
+    collections::HashMap,
+    sync::{Mutex, OnceLock},
+};
 
-use once_cell::sync::Lazy;
+//======================================
+// Wait Callbacks Global
+//======================================
 
 struct ForceSend<T>(T);
 
 unsafe impl<T> Send for ForceSend<T> {}
+
+type WaitCallbacksHashMap = ForceSend<HashMap<WSLINK, *mut std::ffi::c_void>>;
 
 /// Hash map used to store the closure passed to [`Link::wait_with_callback()`].
 ///
@@ -19,8 +25,21 @@ unsafe impl<T> Send for ForceSend<T> {}
 /// data to that function pointer. Both pieces of data are required to pass a Rust
 /// closure across the FFI boundry. Instead, we store the closure in this global static
 /// hash map, and look it up inside the callback trampoline function.
-static WAIT_CALLBACKS: Lazy<Mutex<ForceSend<HashMap<WSLINK, *mut std::ffi::c_void>>>> =
-    Lazy::new(|| Mutex::new(ForceSend(HashMap::new())));
+static WAIT_CALLBACKS: OnceLock<Mutex<WaitCallbacksHashMap>> = OnceLock::new();
+
+fn get_wait_callbacks_lock() -> std::sync::MutexGuard<'static, WaitCallbacksHashMap> {
+    let mutex = WAIT_CALLBACKS.get_or_init(|| Mutex::new(ForceSend(HashMap::new())));
+
+    let lock = mutex
+        .lock()
+        .expect("failed to acquire lock on WAIT_CALLBACKS");
+
+    lock
+}
+
+//======================================
+// Link Implementation
+//======================================
 
 impl Link {
     /// *WSTP C API Documentation:* [`WSWaitForLinkActivity`](https://reference.wolfram.com/language/ref/c/WSWaitForLinkActivity.html)
@@ -88,9 +107,7 @@ impl Link {
             let boxed_closure_ptr = Box::into_raw(Box::new(callback));
 
             {
-                let mut lock = WAIT_CALLBACKS
-                    .lock()
-                    .expect("failed to acquire lock on WAIT_CALLBACKS");
+                let mut lock = get_wait_callbacks_lock();
 
                 let callbacks = &mut lock.0;
 
@@ -109,9 +126,7 @@ impl Link {
             );
 
             {
-                let mut lock = WAIT_CALLBACKS
-                    .lock()
-                    .expect("failed to acquire lock on WAIT_CALLBACKS");
+                let mut lock = get_wait_callbacks_lock();
 
                 let callbacks = &mut lock.0;
 
@@ -146,9 +161,7 @@ where
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         // let (raw_user_closure, _) = link.user_data();
         let raw_user_closure: *mut std::ffi::c_void = {
-            let lock = WAIT_CALLBACKS
-                .lock()
-                .expect("failed to acquire lock on WAIT_CALLBACKS");
+            let lock = get_wait_callbacks_lock();
 
             *lock
                 .0

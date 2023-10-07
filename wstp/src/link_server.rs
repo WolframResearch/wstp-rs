@@ -3,6 +3,7 @@ use std::fmt;
 use std::os::raw::c_int;
 use std::str::FromStr;
 
+use crate::env::with_raw_stdenv;
 use crate::{sys, Error, Link};
 
 /// WSTP link server.
@@ -52,15 +53,16 @@ impl LinkServer {
             let iface = CString::new(addr.ip().to_string())
                 .expect("failed to create CString from LinkServer interface");
 
-            let raw_link_server: sys::WSLinkServer = unsafe {
-                sys::WSNewLinkServerWithPortAndInterface(
-                    crate::stdenv()?.raw_env,
-                    addr.port(),
-                    iface.as_ptr(),
-                    std::ptr::null_mut(),
-                    &mut err,
-                )
-            };
+            let raw_link_server: sys::WSLinkServer =
+                with_raw_stdenv(|raw_stdenv| unsafe {
+                    sys::WSNewLinkServerWithPortAndInterface(
+                        raw_stdenv,
+                        addr.port(),
+                        iface.as_ptr(),
+                        std::ptr::null_mut(),
+                        &mut err,
+                    )
+                })?;
 
             if raw_link_server.is_null() || err != sys::MLEOK {
                 return Err(Error::from_code(err));
@@ -80,14 +82,9 @@ impl LinkServer {
     pub fn new(port: u16) -> Result<Self, Error> {
         let mut err: std::os::raw::c_int = sys::MLEOK;
 
-        let raw_server: sys::WSLinkServer = unsafe {
-            sys::WSNewLinkServerWithPort(
-                crate::stdenv()?.raw_env,
-                port,
-                std::ptr::null_mut(),
-                &mut err,
-            )
-        };
+        let raw_server: sys::WSLinkServer = with_raw_stdenv(|raw_stdenv| unsafe {
+            sys::WSNewLinkServerWithPort(raw_stdenv, port, std::ptr::null_mut(), &mut err)
+        })?;
 
         if raw_server.is_null() || err != sys::MLEOK {
             return Err(Error::from_code(err));
@@ -132,14 +129,14 @@ impl LinkServer {
     {
         let mut err: std::os::raw::c_int = sys::MLEOK;
 
-        let raw_server: sys::WSLinkServer = unsafe {
+        let raw_server: sys::WSLinkServer = with_raw_stdenv(|raw_stdenv| unsafe {
             sys::WSNewLinkServerWithPort(
-                crate::stdenv()?.raw_env,
+                raw_stdenv,
                 port,
                 Box::into_raw(Box::new(callback)) as *mut std::ffi::c_void,
                 &mut err,
             )
-        };
+        })?;
 
         if raw_server.is_null() || err != sys::MLEOK {
             return Err(Error::from_code(err));

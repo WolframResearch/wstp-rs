@@ -31,15 +31,14 @@ impl Error {
 
     pub(crate) fn from_code(code: i32) -> Self {
         // Lookup the error string describing this error code.
-        let message: String = crate::env::stdenv()
-            .ok()
-            .and_then(|stdenv| unsafe {
+        let builtin_message: Result<Option<String>, Error> =
+            crate::env::with_raw_stdenv(|stdenv| unsafe {
                 let code_long = std::os::raw::c_long::try_from(code).unwrap();
 
                 // Note: We do not need to free this, because it's scoped to our eternal
                 //       STDENV instance.
                 let message_cptr: *const c_char =
-                    crate::sys::WSErrorString(stdenv.raw_env, code_long);
+                    crate::sys::WSErrorString(stdenv, code_long);
 
                 if message_cptr.is_null() {
                     return None;
@@ -48,8 +47,12 @@ impl Error {
                 let message_cstr = CStr::from_ptr(message_cptr);
 
                 Some(message_cstr.to_str().ok()?.to_owned())
-            })
-            .unwrap_or_else(|| format!("WSTP error code {} occurred.", code));
+            });
+
+        let message = match builtin_message {
+            Ok(Some(message)) => message,
+            Ok(None) | Err(_) => format!("WSTP error code {} occurred.", code),
+        };
 
         Error {
             code: Some(code),

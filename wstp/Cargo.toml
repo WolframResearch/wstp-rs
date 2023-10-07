@@ -2,7 +2,7 @@
 name = "wstp"
 version = "0.2.8"
 edition = "2021"
-rust-version = "1.64"
+rust-version = "1.70" # Update to 1.70 for OnceLock
 license = "MIT OR Apache-2.0"
 authors = ["Connor Gray <code@connorgray.com>"]
 readme = "../README.md"
@@ -18,7 +18,6 @@ wstp-sys = { version = "0.2.8", path = "../wstp-sys" }
 
 wolfram-expr = "0.1.4"
 
-once_cell = "1.9.0"
 ref-cast = "1.0.13"
 
 [dev-dependencies]
