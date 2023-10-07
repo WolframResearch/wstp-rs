@@ -24,20 +24,24 @@
 //!   * All [`Link`][crate::Link]'s MUST be closed before the `WstpEnv` they are
 //!     associated with is deinitialized (essentially a restatement of the first condition).
 
-use std::{
-    ops::Deref,
-    sync::{Mutex, MutexGuard},
-};
-
-use once_cell::sync::Lazy;
+use std::sync::Mutex;
 
 use crate::{sys, Error};
 
 /// The standard WSTP environment object.
 ///
 /// *WSTP C API Documentation:* [`stdenv`](https://reference.wolfram.com/language/ref/c/stdenv.html)
-static STDENV: Lazy<Mutex<Option<WstpEnv>>> =
-    Lazy::new(|| Mutex::new(Some(initialize().unwrap())));
+static STDENV: Mutex<StdEnvState> = Mutex::new(StdEnvState::Uninitialized);
+
+enum StdEnvState {
+    /// No links have been created yet, so the lazily initialized STDENV is
+    /// empty.
+    Uninitialized,
+    Initialized(WstpEnv),
+    /// The WSTP library was shutdown so the STDENV was deinitialized and cannot
+    /// be re-initialized.
+    Shutdown,
+}
 
 /// Private. A WSTP library environment.
 ///
@@ -50,46 +54,44 @@ pub(crate) struct WstpEnv {
     pub raw_env: sys::WSENV,
 }
 
+/// FIXME: This is only valid for [`STDENV`] because we enforce exclusive access
+///        via [`with_raw_stdenv()`]. Other general instances of `WstpEnv`
+///        are not safe to send between threads. Use ForceSend?
 unsafe impl Send for WstpEnv {}
 
-/// An RAII guard that provides scoped access to the `STDENV` static.
-pub(crate) struct StdEnv {
-    guard: MutexGuard<'static, Option<WstpEnv>>,
-}
-
-impl Deref for StdEnv {
-    type Target = WstpEnv;
-
-    fn deref(&self) -> &WstpEnv {
-        match self.guard.as_ref() {
-            Some(stdenv) => stdenv,
-            None => panic!("STDENV has been shutdown."),
-        }
-    }
-}
-
-/// Private.
+/// Enforce unique access to the raw `STDENV` value.
 ///
-/// NOTE: This function should remain private. See note on [`crate::env`].
-///
-/// *WSTP C API Documentation:* [`WSInitialize()`](https://reference.wolfram.com/language/ref/c/WSInitialize.html)
-fn initialize() -> Result<WstpEnv, Error> {
-    let raw_env: sys::WSENV;
+/// This prevents trying to create links stored on the same global `WSENV`
+/// instance in multiple threads at the same time. The `WSENV` type and WSTP API
+/// functions do not otherwise do synchronization when mutating `WSENV` instances.
+pub(crate) fn with_raw_stdenv<T, F: FnOnce(sys::WSENV) -> T>(
+    callback: F,
+) -> Result<T, Error> {
+    let mut guard = STDENV.lock().map_err(|err| {
+        Error::custom(format!("Unable to acquire lock on STDENV: {}", err))
+    })?;
 
-    // TODO: Is this thread-safe?
-    //       Is it safe to call WSInitialize() multiple times in the same process?
-    unsafe {
-        raw_env = sys::WSInitialize(std::ptr::null_mut());
+    if let StdEnvState::Uninitialized = *guard {
+        *guard = StdEnvState::Initialized(WstpEnv::initialize().unwrap())
     }
 
-    if raw_env.is_null() {
-        return Err(Error::custom(
-            // TODO: Is there an internal error string which could be included here?
-            format!("WSInitialize() failed"),
-        ));
-    }
+    let raw_env = match &*guard {
+        StdEnvState::Uninitialized => unreachable!(),
+        StdEnvState::Initialized(stdenv) => stdenv.raw_env,
+        StdEnvState::Shutdown => {
+            return Err(Error::custom(
+                "wstp-rs: STDENV has been shutdown. No more links can be created."
+                    .to_owned(),
+            ))
+        },
+    };
 
-    Ok(WstpEnv { raw_env })
+    // Call the callback during the period that we hold `guard`.
+    let result = callback(raw_env);
+
+    drop(guard);
+
+    Ok(result)
 }
 
 
@@ -118,38 +120,54 @@ pub unsafe fn shutdown() -> Result<bool, Error> {
         Error::custom(format!("Unable to acquire lock on STDENV: {}", err))
     })?;
 
-    let was_initialized = if let Some(env) = guard.take() {
-        env.deinitialize();
-        true
-    } else {
-        false
+    // Take the current state and set STDENV to Shutdown.
+    let state = std::mem::replace(&mut *guard, StdEnvState::Shutdown);
+
+    let was_initialized = match state {
+        StdEnvState::Uninitialized => false,
+        StdEnvState::Initialized(stdenv) => {
+            stdenv.deinitialize();
+            true
+        },
+        // TODO(cleanup): Should this panic instead? shutdown() shouldn't be
+        //                called more than once.
+        StdEnvState::Shutdown => false,
     };
 
     Ok(was_initialized)
 }
 
 impl WstpEnv {
+    /// Private.
+    ///
+    /// NOTE: This function should remain private. See note on [`crate::env`].
+    ///
+    /// *WSTP C API Documentation:* [`WSInitialize()`](https://reference.wolfram.com/language/ref/c/WSInitialize.html)
+    pub(crate) fn initialize() -> Result<Self, Error> {
+        // TODO: Is this thread-safe?
+        //       Is it safe to call WSInitialize() multiple times in the same process?
+        let raw_env: sys::WSENV = unsafe { sys::WSInitialize(std::ptr::null_mut()) };
+
+        if raw_env.is_null() {
+            return Err(Error::custom(
+                // TODO: Is there an internal error string which could be included here?
+                format!("WSInitialize() failed"),
+            ));
+        }
+
+        Ok(WstpEnv { raw_env })
+    }
+
     #[allow(dead_code)]
-    pub fn raw_env(&self) -> sys::WSENV {
+    pub(crate) fn raw_env(&self) -> sys::WSENV {
         let WstpEnv { raw_env } = *self;
 
         raw_env
     }
 
     fn deinitialize(self) {
-        let WstpEnv { raw_env } = self;
-
-        unsafe { sys::WSDeinitialize(raw_env) }
+        drop(self)
     }
-}
-
-/// Acquire a lock on [`struct@STDENV`].
-pub(crate) fn stdenv() -> Result<StdEnv, Error> {
-    let guard = STDENV.lock().map_err(|err| {
-        Error::custom(format!("Unable to acquire lock on STDENV: {}", err))
-    })?;
-
-    Ok(StdEnv { guard })
 }
 
 impl Drop for WstpEnv {

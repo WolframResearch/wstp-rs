@@ -3,15 +3,13 @@ use std::{
     time::{Duration, Instant},
 };
 
-use once_cell::sync::Lazy;
-
 use wstp::{sys, Link, LinkServer, Protocol};
 
 const PORT: u16 = 11235;
 
 /// Guard used to ensure the [`LinkServer`] tests are run sequentially, so that the
 /// [`PORT`] is free for each test.
-static MUTEX: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+static MUTEX: Mutex<()> = Mutex::new(());
 
 #[test]
 fn test_link_server_using_accept() {

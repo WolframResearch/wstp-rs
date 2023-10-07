@@ -187,7 +187,7 @@ pub use crate::{
 };
 
 // TODO: Make this function public from `wstp`?
-pub(crate) use env::stdenv;
+pub(crate) use env::with_raw_stdenv;
 
 
 //======================================
@@ -378,7 +378,8 @@ impl Link {
     pub fn new_loopback() -> Result<Self, Error> {
         unsafe {
             let mut err: std::os::raw::c_int = sys::MLEOK;
-            let raw_link = sys::WSLoopbackOpen(stdenv()?.raw_env, &mut err);
+            let raw_link =
+                with_raw_stdenv(|raw_stdenv| sys::WSLoopbackOpen(raw_stdenv, &mut err))?;
 
             if raw_link.is_null() || err != sys::MLEOK {
                 return Err(Error::from_code(err));
@@ -531,14 +532,14 @@ impl Link {
 
         let mut err: std::os::raw::c_int = sys::MLEOK;
 
-        let raw_link = unsafe {
+        let raw_link = with_raw_stdenv(|raw_stdenv| unsafe {
             sys::WSOpenArgcArgv(
-                stdenv()?.raw_env,
+                raw_stdenv,
                 i32::try_from(c_strings.len()).unwrap(),
                 c_strings.as_mut_ptr(),
                 &mut err,
             )
-        };
+        })?;
 
         // Convert the `*mut i8` C strings back into owned CString's, so that they are
         // deallocated.
