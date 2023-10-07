@@ -4,13 +4,8 @@
 ![License](https://img.shields.io/crates/l/wstp.svg)
 [![Documentation](https://docs.rs/wstp/badge.svg)](https://docs.rs/wstp)
 
-<h4>
-  <a href="https://docs.rs/wstp">API Documentation</a>
-  <span> | </span>
-  <a href="https://github.com/WolframResearch/wstp-rs/blob/master/docs/CHANGELOG.md">Changelog</a>
-  <span> | </span>
-  <a href="https://github.com/WolframResearch/wstp-rs/blob/master/docs/CONTRIBUTING.md">Contributing</a>
-</h4>
+#### [API Documentation](https://docs.rs/CRATE-NAME) | [Changelog](./docs/CHANGELOG.md) | [Contributing](./docs/CONTRIBUTING.md)
+
 
 Bindings to the [Wolfram Symbolic Transfer Protocol (WSTP)](https://www.wolfram.com/wstp/).
 

@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## [0.2.9] — 2023-10-07
+
+### Fixed
+
+* Support NULL bytes in strings sent via `Link::put_str()`. ([#60])
+
+### Changed
+
+* Update minimum supported Rust version (MSRV) to **Rust 1.70**. Remove
+  dependency on once_cell. ([#62])
+
+
 
 ## [0.2.8] — 2023-08-28
 
@@ -343,10 +355,15 @@ Initial release of the [`wstp`](https://crates.io/crates/wstp) crate.
 [#55]: https://github.com/WolframResearch/wstp-rs/pull/55
 [#56]: https://github.com/WolframResearch/wstp-rs/pull/56
 
+<!-- v0.2.9 -->
+[#60]: https://github.com/WolframResearch/wstp-rs/pull/60
+[#62]: https://github.com/WolframResearch/wstp-rs/pull/62
+
 
 <!-- This needs to be updated for each tagged release. -->
-[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.8...HEAD
+[Unreleased]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.9...HEAD
 
+[0.2.9]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.8...v0.2.9
 [0.2.8]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.7...v0.2.7
 [0.2.6]: https://github.com/WolframResearch/wstp-rs/compare/v0.2.5...v0.2.6
