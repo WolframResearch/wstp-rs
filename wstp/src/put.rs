@@ -38,21 +38,8 @@ impl Link {
 
     /// *WSTP C API Documentation:* [`WSPutUTF8String()`](https://reference.wolfram.com/language/ref/c/WSPutUTF8String.html)
     pub fn put_str(&mut self, string: &str) -> Result<(), Error> {
-        // TODO: Optimization:
-        //     This intermediate CString allocation may not actually be necessary. Because
-        //     WSPutUTF8String() takes a pointer + length pair, it's possible it doesn't
-        //     require that the string be NULL terminated. I'm not confident that is the
-        //     case though, and it isn't explicitly documented one way or the other.
-        //     Investigate this in the WSTP sources, and fix this if possible. If fixed,
-        //     be sure to include this assertion (`str`'s can contain NULL bytes, and
-        //     I have much less confidence that older parts of WSTP are strict about not
-        //     using strlen() on strings internally).
-        //
-        //         assert!(!string.bytes().any(|byte| byte == 0));
-        let c_string = CString::new(string).unwrap();
-
-        let len = i32::try_from(c_string.as_bytes().len()).expect("usize overflows i32");
-        let ptr = c_string.as_ptr() as *const u8;
+        let len = i32::try_from(string.as_bytes().len()).expect("usize overflows i32");
+        let ptr = string.as_ptr() as *const u8;
 
         if unsafe { WSPutUTF8String(self.raw_link, ptr, len) } == 0 {
             return Err(self.error_or_unknown());
