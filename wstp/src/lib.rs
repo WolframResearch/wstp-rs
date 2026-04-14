@@ -942,6 +942,31 @@ impl Link {
             ExprKind::Real(real) => {
                 self.put_f64(**real)?;
             },
+            // Arbitrary-precision numbers don't have a single fixed-width
+            // WSTP primitive. Transmit them as `ToExpression["<digits>"]`
+            // so the peer reconstructs the exact WL Integer/Real on receipt.
+            //
+            // TODO: switch to `put_raw_type(WSTKINT)` + decimal-string data
+            //       once we expose that protocol-level binding; the
+            //       `ToExpression` hop is a correctness-preserving
+            //       round-trip but forces an eval on the receiver.
+            ExprKind::BigInteger(bi) => {
+                self.put_raw_type(i32::from(sys::WSTKFUNC))?;
+                self.put_arg_count(1)?;
+                self.put_symbol("System`ToExpression")?;
+                self.put_str(&bi.to_str_radix(10))?;
+            },
+            ExprKind::BigReal { digits, precision } => {
+                self.put_raw_type(i32::from(sys::WSTKFUNC))?;
+                self.put_arg_count(1)?;
+                self.put_symbol("System`ToExpression")?;
+                let literal = if *precision == 0 {
+                    digits.clone()
+                } else {
+                    format!("{}`{}", digits, precision)
+                };
+                self.put_str(&literal)?;
+            },
         }
 
         Ok(())
