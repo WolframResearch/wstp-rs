@@ -266,7 +266,7 @@ impl Link {
     ) -> Result<(), Error> {
         assert_eq!(
             data.len(),
-            dimensions.iter().product(),
+            dimensions.iter().product::<usize>(),
             "data length does not equal product of dimensions"
         );
 
@@ -303,7 +303,7 @@ impl Link {
     ) -> Result<(), Error> {
         assert_eq!(
             data.len(),
-            dimensions.iter().product(),
+            dimensions.iter().product::<usize>(),
             "data length does not equal product of dimensions"
         );
 
@@ -340,7 +340,7 @@ impl Link {
     ) -> Result<(), Error> {
         assert_eq!(
             data.len(),
-            dimensions.iter().product(),
+            dimensions.iter().product::<usize>(),
             "data length does not equal product of dimensions"
         );
 
@@ -371,7 +371,7 @@ impl Link {
     ) -> Result<(), Error> {
         assert_eq!(
             data.len(),
-            dimensions.iter().product(),
+            dimensions.iter().product::<usize>(),
             "data length does not equal product of dimensions"
         );
 
@@ -412,7 +412,7 @@ impl Link {
     ) -> Result<(), Error> {
         assert_eq!(
             data.len(),
-            dimensions.iter().product(),
+            dimensions.iter().product::<usize>(),
             "data length does not equal product of dimensions"
         );
 
@@ -449,7 +449,7 @@ impl Link {
     ) -> Result<(), Error> {
         assert_eq!(
             data.len(),
-            dimensions.iter().product(),
+            dimensions.iter().product::<usize>(),
             "data length does not equal product of dimensions"
         );
 

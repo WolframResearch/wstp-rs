@@ -807,7 +807,7 @@ pub struct Array<'link, T> {
 impl<'link, T> Array<'link, T> {
     /// Access the elements stored in this [`Array`] as a flat buffer.
     pub fn data<'s>(&'s self) -> &'s [T] {
-        let data_len: usize = self.dimensions.iter().product();
+        let data_len: usize = self.dimensions.iter().product::<usize>();
 
         // SAFETY:
         //     It is important that the lifetime of `data` is tied to `self` and NOT to
