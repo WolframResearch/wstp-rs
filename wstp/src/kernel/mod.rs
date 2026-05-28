@@ -56,7 +56,7 @@
 //!
 //! * [`Link::put_eval_packet()`]
 
-use std::{path::PathBuf, process};
+use std::{path::PathBuf, process, time::Duration};
 
 use wolfram_expr::Expr;
 
@@ -105,6 +105,27 @@ impl WolframKernelProcess {
     // TODO: Would it be correct to describe this as essentially `LinkLaunch`? Also note
     //       that this doesn't actually use `-linkmode launch`.
     pub fn launch(path: &PathBuf) -> Result<WolframKernelProcess, Error> {
+        Self::launch_impl(path, None)
+    }
+
+    /// Like [`WolframKernelProcess::launch()`], but aborts with an error if the
+    /// spawned kernel does not complete the WSTP handshake within `timeout`.
+    ///
+    /// Use this when you want to bound how long the caller blocks waiting for a
+    /// kernel that may fail to start (e.g. licensing failures, missing binary,
+    /// misconfigured environment). The underlying mechanism is
+    /// [`Link::activate_with_timeout()`].
+    pub fn launch_with_timeout(
+        path: &PathBuf,
+        timeout: Duration,
+    ) -> Result<WolframKernelProcess, Error> {
+        Self::launch_impl(path, Some(timeout))
+    }
+
+    fn launch_impl(
+        path: &PathBuf,
+        timeout: Option<Duration>,
+    ) -> Result<WolframKernelProcess, Error> {
         let mut link = Link::listen(Protocol::SharedMemory, "")?;
 
         let name = link.link_name();
@@ -120,16 +141,14 @@ impl WolframKernelProcess {
             .spawn()?;
 
         // Wait for an incoming connection to be made to the listening link.
-        // This will block until a connection is made.
-        //
-        // FIXME: This currently has an infinite timeout. If the spawned
-        //        process fails to connect for some reason (e.g. a launched
-        //        Kernel doesn't start due to a licensing error), this will
-        //        just wait forever, hanging the current program.
-        //
-        //        TODO: Set a yield function that will abort if a timeout
-        //              duration is reached.
-        let () = link.activate()?;
+        // With `timeout = None` this blocks forever (matching the historical
+        // `launch()` behaviour). With `Some(d)` the wait is bounded by the
+        // cooperative yield-function abort installed by
+        // `Link::activate_with_timeout`.
+        match timeout {
+            Some(d) => link.activate_with_timeout(d)?,
+            None => link.activate()?,
+        };
 
         Ok(WolframKernelProcess {
             process: kernel_process,
