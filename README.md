@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> **This repository is archived.** The `wstp` crate now lives in the [`wolfram-rust-library`](https://github.com/WolframResearch/wolfram-rust-library) monorepo, in the [`wstp/`](https://github.com/WolframResearch/wolfram-rust-library/tree/HEAD/wstp) directory.
+
 # wstp
 
 [![Crates.io](https://img.shields.io/crates/v/wstp.svg)](https://crates.io/crates/wstp)
